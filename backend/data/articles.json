@@ -1,0 +1,137 @@
+[
+  {
+    "id": 1,
+    "title": "Global Manufacturing Takes Off as Automation Scales",
+    "category": "Manufacturing",
+    "excerpt": "A new report shows that global manufacturing index has grown significantly in Q2, largely driven by intelligent warehouse automation.",
+    "date": "07 May 2026",
+    "trending": true,
+    "imageUrl": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 2,
+    "title": "Renewable Energy Capacity Surges in Asia",
+    "category": "Renewable",
+    "excerpt": "Major investments in solar and wind have pushed Asia's renewable energy capacity to new highs this year.",
+    "date": "06 May 2026",
+    "trending": true,
+    "imageUrl": "https://images.unsplash.com/photo-1509391366360-1e9e04dc188b?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 3,
+    "title": "Tech Giants Invest in Quantum Computing",
+    "category": "Technology",
+    "excerpt": "Several leading tech firms have announced billion-dollar initiatives to scale quantum computing applications.",
+    "date": "05 May 2026",
+    "trending": false,
+    "imageUrl": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 4,
+    "title": "New Framework for Cybersecurity in Industrial Networks",
+    "category": "Cybersecurity",
+    "excerpt": "The new Securennov suite launches to provide advanced threat detection for OT and IT networks.",
+    "date": "04 May 2026",
+    "trending": true,
+    "imageUrl": "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 5,
+    "title": "Advancements in Automotive Bedrock Chassis",
+    "category": "Automotive",
+    "excerpt": "Major car manufacturers have partnered up to develop a new standardized chassis for EVs.",
+    "date": "03 May 2026",
+    "trending": false,
+    "imageUrl": "https://images.unsplash.com/photo-1503376713251-8461502447eb?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 6,
+    "title": "Hannover Messe 2026: Zoomlion Debuts Robot Ops",
+    "category": "Manufacturing",
+    "excerpt": "Showcasing Industrial AI and Intelligent Manufacturing Capabilities.",
+    "date": "02 May 2026",
+    "trending": false,
+    "imageUrl": "https://images.unsplash.com/photo-1581092334651-ddf26d9a09d0?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 7,
+    "title": "Frost & Sullivan Identifies Industrial Capacity as the Defining Constraint",
+    "category": "Manufacturing",
+    "excerpt": "A deep dive into European Defence Manufacturing.",
+    "date": "01 May 2026",
+    "trending": false,
+    "imageUrl": "https://images.unsplash.com/photo-1565043589221-1a6fd9ae45c7?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 8,
+    "title": "IBM Announces New Cybersecurity Measures",
+    "category": "Cybersecurity",
+    "excerpt": "Helping Enterprises Confront Agentic Attacks effectively.",
+    "date": "30 Apr 2026",
+    "trending": false,
+    "imageUrl": "https://images.unsplash.com/photo-1614064641913-a520faccb19c?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 9,
+    "title": "Cyble Secures Dual Industry Honors",
+    "category": "Cybersecurity",
+    "excerpt": "Major Wins at Global InfoSec Awards 2026 and Cybersecurity Excellence Awards.",
+    "date": "29 Apr 2026",
+    "trending": false,
+    "imageUrl": "https://images.unsplash.com/photo-1510511459019-5d55ad490e6e?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 10,
+    "title": "Energy Storage Safety Elevated",
+    "category": "Safety",
+    "excerpt": "Sungrow & TÜV Rheinland White Paper Unveiled.",
+    "date": "28 Apr 2026",
+    "trending": false,
+    "imageUrl": "https://images.unsplash.com/photo-1542396601-dca920ea2807?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 11,
+    "title": "2026 International AI Safety Report Charts Rapid Changes",
+    "category": "Safety",
+    "excerpt": "Emerging Risks in AI development.",
+    "date": "27 Apr 2026",
+    "trending": false,
+    "imageUrl": "https://images.unsplash.com/photo-1555664424-778a1e5e1b48?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 12,
+    "title": "Driving the Global Food Revolution",
+    "category": "Technology",
+    "excerpt": "Japan's Cutting-Edge Food Processing Technology Takes Center Stage.",
+    "date": "26 Apr 2026",
+    "trending": false,
+    "imageUrl": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 13,
+    "title": "Huawei's 6th Global Installer Summit",
+    "category": "Renewable",
+    "excerpt": "Gathering the Best Installers to Embrace Renewable Energy Opportunities in the AI Era.",
+    "date": "25 Apr 2026",
+    "trending": false,
+    "imageUrl": "https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 14,
+    "title": "Mantle Confirms Full Network Security",
+    "category": "Network",
+    "excerpt": "Coordinates Recovery With Aave Following rsETH Incident.",
+    "date": "24 Apr 2026",
+    "trending": false,
+    "imageUrl": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=800"
+  },
+  {
+    "id": 15,
+    "title": "Talogy launches next-generation High Potential solution",
+    "category": "Global",
+    "excerpt": "Transforming global talent pipelines.",
+    "date": "23 Apr 2026",
+    "trending": false,
+    "imageUrl": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=800"
+  }
+]

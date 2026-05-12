@@ -1,0 +1,13 @@
+{
+  "name": "industrial-times-media-platform",
+  "version": "1.0.0",
+  "description": "Premium Industrial Media Platform",
+  "scripts": {
+    "start": "npm run dev --prefix frontend & npm start --prefix backend",
+    "dev": "npm run dev --prefix frontend",
+    "frontend": "npm run dev --prefix frontend",
+    "backend": "node backend/server.js",
+    "seed": "node backend/seed.js",
+    "admin": "node scripts/admin-portal.js"
+  }
+}
