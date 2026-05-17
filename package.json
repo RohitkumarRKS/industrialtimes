@@ -11,5 +11,8 @@
     "backend": "node backend/server.js",
     "seed": "node backend/seed.js",
     "admin": "node scripts/admin-portal.js"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }
