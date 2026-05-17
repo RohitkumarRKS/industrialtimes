@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Container, Row, Col, Card, Button, Badge } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import PaymentGatewayModal from './PaymentGatewayModal';
+import API_BASE from '../config/api';
 
 const MembershipModal = ({ show, onHide, userInfo }) => {
   const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly', 'quarterly', 'yearly'
@@ -84,7 +85,7 @@ const MembershipModal = ({ show, onHide, userInfo }) => {
 
   const onPaymentSuccess = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/membership/verify-payment', {
+      const res = await fetch(`${API_BASE}/api/membership/verify-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

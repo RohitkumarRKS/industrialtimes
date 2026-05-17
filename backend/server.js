@@ -8,6 +8,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const adRoutes = require('./routes/adRoutes');
 const podcastRoutes = require('./routes/podcastRoutes');
 const membershipRoutes = require('./routes/membershipRoutes');
+const planRoutes = require('./routes/planRoutes');
 
 // Load env vars
 require('dotenv').config({ path: path.join(__dirname, '.env') });
@@ -26,6 +27,15 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/ads', adRoutes);
 app.use('/api/podcast', podcastRoutes);
 app.use('/api/membership', membershipRoutes);
+app.use('/api/plans', planRoutes);
+
+// Serve frontend in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '..', 'frontend', 'dist')));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'));
+  });
+}
 
 // Sync Database
 sequelize.sync({ alter: true }).then(() => {

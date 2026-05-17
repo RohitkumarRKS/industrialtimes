@@ -3,6 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { Container, Row, Col, Spinner, Badge } from 'react-bootstrap';
 import { Helmet } from 'react-helmet-async';
 import Advertisement from '../components/Advertisement';
+import API_BASE from '../config/api';
 
 const SearchPage = () => {
   const [results, setResults] = useState([]);
@@ -16,7 +17,7 @@ const SearchPage = () => {
     const fetchResults = async () => {
       setLoading(true);
       try {
-        let url = `http://localhost:5000/api/articles`;
+        let url = `${API_BASE}/api/articles`;
         if (query) {
           url += `?search=${query}`;
         } else if (dateQuery) {

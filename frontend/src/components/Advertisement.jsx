@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import API_BASE from '../config/api';
 
 /* ─────────────────────────────────────────────────────────────────
    Advertisement Component
@@ -25,11 +26,11 @@ const Advertisement = ({ slot = 'leaderboard', category = null, className = '' }
       try {
         const params = new URLSearchParams({ slot });
         if (category) params.append('category', category);
-        const { data } = await axios.get(`http://localhost:5000/api/ads?${params}`);
+        const { data } = await axios.get(`${API_BASE}/api/ads?${params}`);
         if (data && data.length > 0) {
           setAd(data[0]);
           // Count impression
-          axios.post(`http://localhost:5000/api/ads/${data[0].id}/impression`).catch(() => {});
+          axios.post(`${API_BASE}/api/ads/${data[0].id}/impression`).catch(() => {});
         }
       } catch (err) {
         // silently fail — show placeholder
@@ -39,11 +40,11 @@ const Advertisement = ({ slot = 'leaderboard', category = null, className = '' }
   }, [slot, category]);
 
   const handleClick = () => {
-    if (ad) axios.post(`http://localhost:5000/api/ads/${ad.id}/click`).catch(() => {});
+    if (ad) axios.post(`${API_BASE}/api/ads/${ad.id}/click`).catch(() => {});
   };
 
   const imgSrc = ad?.imageUrl
-    ? (ad.imageUrl.startsWith('http') ? ad.imageUrl : `http://localhost:5000${ad.imageUrl}`)
+    ? (ad.imageUrl.startsWith('http') ? ad.imageUrl : `${API_BASE}${ad.imageUrl}`)
     : null;
 
   return (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE from '../../config/api';
 
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
@@ -35,7 +36,7 @@ const AdminLogin = () => {
     }
 
     try {
-      const { data } = await axios.post('http://localhost:5000/api/auth/login', { email, password });
+      const { data } = await axios.post(`${API_BASE}/api/auth/login`, { email, password });
       
       if (data.role !== 'superadmin') {
         setError('Access Denied: Administrative privileges required.');

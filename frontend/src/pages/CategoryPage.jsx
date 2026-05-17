@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Container, Row, Col, Spinner, Badge } from 'react-bootstrap';
 import Advertisement from '../components/Advertisement';
+import API_BASE from '../config/api';
 
 const CategoryPage = ({ categoryOverride }) => {
   const { category: urlCategory } = useParams();
@@ -20,14 +21,14 @@ const CategoryPage = ({ categoryOverride }) => {
     if (!img) return null;
     if (img.startsWith('http')) return img;
     const normalizedPath = img.startsWith('/') ? img : `/${img}`;
-    return `http://localhost:5000${normalizedPath}`;
+    return `${API_BASE}${normalizedPath}`;
   };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Fetch Local News
-        const res = await fetch(`http://localhost:5000/api/articles/category/${category}`);
+        const res = await fetch(`${API_BASE}/api/articles/category/${category}`);
         const data = await res.json();
         setArticles(data);
         setLoading(false);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Offcanvas, ListGroup, Button, Modal, Form, Dropdown, Row, Col } from 'react-bootstrap';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import MembershipModal from './MembershipModal';
+import API_BASE from '../config/api';
 
 const indianStates = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", 
@@ -59,7 +60,7 @@ const Navigation = () => {
     e.preventDefault();
     setSubmittingPodcast(true);
     try {
-      const response = await fetch('http://localhost:5000/api/podcast', {
+      const response = await fetch(`${API_BASE}/api/podcast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(podcastData)
@@ -345,10 +346,10 @@ const Navigation = () => {
               </Link>
               <div 
                 className="brand-action-link upgrade-header-btn cursor-pointer"
-                onClick={() => setShowMembership(true)}
+                onClick={() => window.open('/corporate/choose-plan', '_blank')}
               >
-                <i className="bi bi-rocket-takeoff-fill"></i>
-                <span className="d-none d-md-inline text-uppercase fw-black">Upgrade</span>
+                <i className="bi bi-building-fill"></i>
+                <span className="d-none d-md-inline text-uppercase fw-black">Corporate</span>
               </div>
               {userInfo && (
                 <Link to="/profile" className="brand-action-link">
@@ -467,14 +468,14 @@ const Navigation = () => {
                       className="nav-sidebar-link d-flex align-items-center gap-3 p-2 rounded-3 text-decoration-none transition-all w-100 cursor-pointer"
                       onClick={() => {
                         handleClose();
-                        setShowMembership(true);
+                        window.open('/corporate/choose-plan', '_blank');
                       }}
                       style={{ background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(244, 67, 54, 0.1))' }}
                     >
                       <div className="icon-wrapper d-flex align-items-center justify-content-center rounded-2 transition-all" style={{ width: '32px', height: '32px', background: 'linear-gradient(135deg, #ff9800, #f44336)' }}>
-                        <i className="bi bi-rocket-takeoff-fill text-white small"></i>
+                        <i className="bi bi-building-fill text-white small"></i>
                       </div>
-                      <span className="fw-bold" style={{ color: '#ff9800' }}>Upgrade Plan</span>
+                      <span className="fw-bold" style={{ color: '#ff9800' }}>Corporate Portal</span>
                     </div>
                 </ListGroup.Item>
               </ListGroup>

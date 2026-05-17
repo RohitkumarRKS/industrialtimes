@@ -3,6 +3,7 @@ import { Container, Row, Col, Badge, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import Advertisement from '../components/Advertisement';
+import API_BASE from '../config/api';
 
 const Favorites = () => {
   const [favorites, setFavorites] = useState([]);
@@ -28,7 +29,7 @@ const Favorites = () => {
   const getImageUrl = (img) => {
     if (!img) return null;
     if (img.startsWith('http')) return img;
-    return `http://localhost:5000${img.startsWith('/') ? '' : '/'}${img}`;
+    return `${API_BASE}${img.startsWith('/') ? '' : '/'}${img}`;
   };
 
   return (

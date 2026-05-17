@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Spinner, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import Advertisement from '../components/Advertisement';
+import API_BASE from '../config/api';
 
 const Home = () => {
   const [articles, setArticles] = useState([]);
@@ -11,7 +12,7 @@ const Home = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/articles');
+        const res = await fetch(`${API_BASE}/api/articles`);
         const data = await res.json();
         setArticles(data);
         setLoading(false);
@@ -43,7 +44,7 @@ const Home = () => {
   const getImageUrl = (img) => {
     if (!img) return null;
     if (img.startsWith('http')) return img;
-    return `http://localhost:5000${img.startsWith('/') ? '' : '/'}${img}`;
+    return `${API_BASE}${img.startsWith('/') ? '' : '/'}${img}`;
   };
 
   return (

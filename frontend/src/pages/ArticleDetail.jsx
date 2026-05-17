@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Container, Row, Col, Spinner, Badge, Modal, Form, Button } from 'react-bootstrap';
 import { Helmet } from 'react-helmet-async';
 import Advertisement from '../components/Advertisement';
+import API_BASE from '../config/api';
 
 const ArticleDetail = () => {
   const { id, category, title } = useParams();
@@ -25,7 +26,7 @@ const ArticleDetail = () => {
     const fetchArticle = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`http://localhost:5000/api/articles/${id}`);
+        const res = await fetch(`${API_BASE}/api/articles/${id}`);
         const data = await res.json();
         
         // Handle both 'image' and 'imageUrl' for compatibility
@@ -36,7 +37,7 @@ const ArticleDetail = () => {
           } else {
             // Ensure path starts with /uploads/ if it doesn't have a protocol
             const normalizedPath = imgPath.startsWith('/') ? imgPath : `/${imgPath}`;
-            data.image = `http://localhost:5000${normalizedPath}`;
+            data.image = `${API_BASE}${normalizedPath}`;
           }
         }
 
@@ -49,7 +50,7 @@ const ArticleDetail = () => {
             let normalizedVideo = data.video.startsWith('/') ? data.video : `/${data.video}`;
             // If the path doesn't already contain 'uploads', we might need to be careful,
             // but usually the backend returns paths like 'uploads/filename.mp4'
-            data.video = `http://localhost:5000${normalizedVideo}`;
+            data.video = `${API_BASE}${normalizedVideo}`;
           }
         }
         
@@ -61,14 +62,14 @@ const ArticleDetail = () => {
         setHasLiked(likedArticles.includes(parseInt(id)));
 
         // Fetch comments
-        const commRes = await fetch(`http://localhost:5000/api/articles/${id}/comments`);
+        const commRes = await fetch(`${API_BASE}/api/articles/${id}/comments`);
         const commData = await commRes.json();
         setComments(commData);
         
         // Fetch related articles in the same category
         if (data.category) {
           try {
-            const relRes = await fetch(`http://localhost:5000/api/articles/category/${data.category}`);
+            const relRes = await fetch(`${API_BASE}/api/articles/category/${data.category}`);
             const relData = await relRes.json();
             if (Array.isArray(relData)) {
               setRelated(relData.filter(a => a.id !== parseInt(id)).slice(0, 4));
@@ -108,7 +109,7 @@ const ArticleDetail = () => {
   const handleLike = async () => {
     if (hasLiked) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/articles/${id}/like`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/api/articles/${id}/like`, { method: 'POST' });
       const data = await res.json();
       setLikes(data.likesCount);
       setHasLiked(true);
@@ -125,7 +126,7 @@ const ArticleDetail = () => {
     if (!newComment.userName || !newComment.content) return;
     setPostingComment(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/articles/${id}/comments`, {
+      const res = await fetch(`${API_BASE}/api/articles/${id}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newComment)

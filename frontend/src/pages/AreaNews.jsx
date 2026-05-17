@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Spinner } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
 import Advertisement from '../components/Advertisement';
+import API_BASE from '../config/api';
 
 const indianStates = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", 
@@ -37,7 +38,7 @@ const AreaNews = () => {
     const fetchNews = async () => {
       setLoading(true);
       try {
-        let url = `http://localhost:5000/api/articles/location/${selectedState}`;
+        let url = `${API_BASE}/api/articles/location/${selectedState}`;
         if (selectedCity) {
            url += `/${selectedCity}`;
         }
@@ -57,7 +58,7 @@ const AreaNews = () => {
   const getImageUrl = (img) => {
     if (!img) return null;
     if (img.startsWith('http')) return img;
-    return `http://localhost:5000${img.startsWith('/') ? '' : '/'}${img}`;
+    return `${API_BASE}${img.startsWith('/') ? '' : '/'}${img}`;
   };
 
   return (

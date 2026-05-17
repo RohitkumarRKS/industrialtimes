@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE from '../../config/api';
 
 const ManageNews = () => {
   const location = useLocation();
@@ -55,7 +56,7 @@ const ManageNews = () => {
   const fetchArticles = async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get('http://localhost:5000/api/articles');
+      const { data } = await axios.get(`${API_BASE}/api/articles`);
       setArticles(data);
     } catch (err) {
       setError('Failed to fetch articles');
@@ -98,10 +99,10 @@ const ManageNews = () => {
     
     try {
       if (editMode) {
-        await axios.put(`http://localhost:5000/api/articles/${currentArticle.id}`, currentArticle, config);
+        await axios.put(`${API_BASE}/api/articles/${currentArticle.id}`, currentArticle, config);
         setSuccess('Article updated successfully');
       } else {
-        await axios.post('http://localhost:5000/api/articles', currentArticle, config);
+        await axios.post(`${API_BASE}/api/articles`, currentArticle, config);
         setSuccess('Article published successfully!');
       }
       fetchArticles();
@@ -116,7 +117,7 @@ const ManageNews = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Delete this article forever?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/articles/${id}`, config);
+        await axios.delete(`${API_BASE}/api/articles/${id}`, config);
         setSuccess('Article deleted');
         fetchArticles();
       } catch (err) {
@@ -134,7 +135,7 @@ const ManageNews = () => {
 
     setMediaUploading(true);
     try {
-      const { data } = await axios.post('http://localhost:5000/api/upload', formData, {
+      const { data } = await axios.post(`${API_BASE}/api/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
@@ -193,7 +194,7 @@ const ManageNews = () => {
                 <div className="manage-article-thumb">
                   {article.image ? (
                     <img 
-                      src={article.image.startsWith('http') ? article.image : `http://localhost:5000${article.image}`} 
+                      src={article.image.startsWith('http') ? article.image : `${API_BASE}${article.image}`} 
                       alt={article.title}
                     />
                   ) : (
@@ -341,7 +342,7 @@ const ManageNews = () => {
                         />
                         {currentArticle.image && (
                           <div className="publish-preview-img">
-                            <img src={currentArticle.image.startsWith('http') ? currentArticle.image : `http://localhost:5000${currentArticle.image}`} alt="Preview" />
+                            <img src={currentArticle.image.startsWith('http') ? currentArticle.image : `${API_BASE}${currentArticle.image}`} alt="Preview" />
                           </div>
                         )}
                       </div>

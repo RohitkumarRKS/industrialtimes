@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE from '../config/api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -23,13 +24,22 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     try {
-      const { data } = await axios.post('http://localhost:5000/api/auth/login', { email, password });
+      const { data } = await axios.post(`${API_BASE}/api/auth/login`, { email, password });
       sessionStorage.setItem('userInfo', JSON.stringify(data));
       setTransitioning(true);
-      setTimeout(() => navigate('/'), 800);
+      // Redirect reporters to their dedicated dashboard
+      const dest = data.role === 'author' ? '/reporter-dashboard' : '/';
+      setTimeout(() => navigate(dest), 800);
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password');
+      if (err.response?.data?.status === 'pending') {
+        setError('⏳ ' + err.response.data.message);
+      } else if (err.response?.data?.status === 'rejected') {
+        setError('❌ ' + err.response.data.message);
+      } else {
+        setError(err.response?.data?.message || 'Invalid email or password');
+      }
       setLoading(false);
     }
   };
@@ -167,18 +177,7 @@ const Login = () => {
               </button>
             </form>
 
-            <div className="auth-social-divider">
-              <span>Or continue with</span>
-            </div>
 
-            <div className="auth-social-buttons">
-              <button className="auth-social-btn google-btn">
-                <i className="bi bi-google"></i> Google
-              </button>
-              <button className="auth-social-btn facebook-btn">
-                <i className="bi bi-facebook"></i> Facebook
-              </button>
-            </div>
             
             <div className="auth-register-prompt">
               Don't have an account? <a href="#" onClick={handleSignupClick} className="auth-link">Register now</a>

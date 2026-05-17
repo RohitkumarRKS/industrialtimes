@@ -25,16 +25,52 @@ const User = sequelize.define('User', {
     allowNull: false
   },
   role: {
-    type: DataTypes.ENUM('user', 'author', 'superadmin'),
+    type: DataTypes.STRING,
     defaultValue: 'user'
   },
+  status: {
+    type: DataTypes.STRING,
+    defaultValue: 'approved'
+  },
+  companyName: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  designation: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  phone: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  selectedPlan: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   membershipPlan: {
-    type: DataTypes.ENUM('basic', 'standard', 'premium', 'pro'),
+    type: DataTypes.STRING,
     allowNull: true,
     defaultValue: null
   },
   planExpiry: {
     type: DataTypes.DATE,
+    allowNull: true
+  },
+  bio: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  expertise: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  portfolio: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  profilePic: {
+    type: DataTypes.STRING,
     allowNull: true
   }
 }, {

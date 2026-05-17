@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Container, Row, Col, Badge, Card } from 'react-bootstrap';
 import Advertisement from '../components/Advertisement';
+import API_BASE from '../config/api';
 
 const AuthorProfile = () => {
   const { name } = useParams();
@@ -10,7 +11,7 @@ const AuthorProfile = () => {
   useEffect(() => {
     const fetchAuthorArticles = async () => {
        try {
-         const res = await fetch(`http://localhost:5000/api/articles`);
+         const res = await fetch(`${API_BASE}/api/articles`);
          const data = await res.json();
          // Filter articles by author name (mocking this as 'Admin' for now if no author object exists)
          setArticles(data.filter(a => a.author === name || (!a.author && name === 'Admin')));

@@ -1,28 +1,46 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE from '../config/api';
 
 const Signup = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
-    role: 'user'
+    role: 'user',
+    phone: '',
+    bio: '',
+    expertise: '',
+    portfolio: ''
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [isSwiping, setIsSwiping] = useState(false);
   const navigate = useNavigate();
 
+  const isReporter = formData.role === 'author';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess('');
     try {
-      await axios.post('http://localhost:5000/api/auth/signup', formData);
-      setTransitioning(true);
-      setTimeout(() => navigate('/login', { state: { message: 'Registration successful! Please login.' } }), 800);
+      const { data } = await axios.post(`${API_BASE}/api/auth/signup`, formData);
+
+      if (isReporter) {
+        // Reporter needs approval - show success message
+        setSuccess(data.message || 'Reporter application submitted! You will receive approval within 24 hours.');
+        setFormData({ name: '', email: '', password: '', role: 'author', phone: '', bio: '', expertise: '', portfolio: '' });
+        setLoading(false);
+      } else {
+        // Reader - instant login redirect
+        setTransitioning(true);
+        setTimeout(() => navigate('/login', { state: { message: 'Registration successful! Please login.' } }), 800);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
       setLoading(false);
@@ -65,27 +83,54 @@ const Signup = () => {
             </div>
 
             <h2 className="auth-brand-tagline auth-hover-glow">
-              Join Industrial Times!<span className="auth-wave">🚀</span>
+              {isReporter ? 'Become a Reporter!' : 'Join Industrial Times!'}
+              <span className="auth-wave">{isReporter ? '📝' : '🚀'}</span>
             </h2>
             <p className="auth-brand-desc auth-hover-slide">
-              Get access to premium industrial reporting, manufacturing insights, and the latest technology trends.
+              {isReporter 
+                ? 'Apply to become an authorized reporter. Publish articles, build your portfolio, and reach millions of industry readers.'
+                : 'Get access to premium industrial reporting, manufacturing insights, and the latest technology trends.'
+              }
             </p>
 
             <div className="auth-brand-divider"></div>
 
             <div className="auth-brand-features">
-              <div className="auth-feature-item auth-hover-lift">
-                <i className="bi bi-check-circle-fill"></i>
-                <span>Unlimited Article Access</span>
-              </div>
-              <div className="auth-feature-item auth-hover-lift">
-                <i className="bi bi-check-circle-fill"></i>
-                <span>Personalized News Feed</span>
-              </div>
-              <div className="auth-feature-item auth-hover-lift">
-                <i className="bi bi-check-circle-fill"></i>
-                <span>Exclusive Industry Reports</span>
-              </div>
+              {isReporter ? (
+                <>
+                  <div className="auth-feature-item auth-hover-lift">
+                    <i className="bi bi-check-circle-fill"></i>
+                    <span>Publish Your Own Articles</span>
+                  </div>
+                  <div className="auth-feature-item auth-hover-lift">
+                    <i className="bi bi-check-circle-fill"></i>
+                    <span>Real-time Analytics Dashboard</span>
+                  </div>
+                  <div className="auth-feature-item auth-hover-lift">
+                    <i className="bi bi-check-circle-fill"></i>
+                    <span>Build Your Reporter Profile</span>
+                  </div>
+                  <div className="auth-feature-item auth-hover-lift">
+                    <i className="bi bi-check-circle-fill"></i>
+                    <span>Approval Within 24 Hours</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="auth-feature-item auth-hover-lift">
+                    <i className="bi bi-check-circle-fill"></i>
+                    <span>Unlimited Article Access</span>
+                  </div>
+                  <div className="auth-feature-item auth-hover-lift">
+                    <i className="bi bi-check-circle-fill"></i>
+                    <span>Personalized News Feed</span>
+                  </div>
+                  <div className="auth-feature-item auth-hover-lift">
+                    <i className="bi bi-check-circle-fill"></i>
+                    <span>Exclusive Industry Reports</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div className="auth-brand-footer">
@@ -102,13 +147,66 @@ const Signup = () => {
               </div>
               <h2 className="auth-form-title">Create Account</h2>
               <p className="auth-form-subtitle">
-                Join thousands of industry professionals.
+                {isReporter ? 'Apply as an authorized reporter.' : 'Join thousands of industry professionals.'}
               </p>
             </div>
 
             {error && <div className="auth-error-alert">{error}</div>}
+            {success && (
+              <div style={{
+                background: 'rgba(16, 185, 129, 0.12)',
+                color: '#10b981',
+                padding: '16px 18px',
+                borderRadius: '12px',
+                fontSize: '0.88rem',
+                marginBottom: '1rem',
+                border: '1px solid rgba(16, 185, 129, 0.25)',
+                lineHeight: 1.5,
+                fontWeight: 600
+              }}>
+                <i className="bi bi-check-circle-fill" style={{ marginRight: '8px' }}></i>
+                {success}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="auth-form">
+              {/* Role Selection - Prominent Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1rem' }}>
+                <div 
+                  onClick={() => { setFormData({ ...formData, role: 'user' }); setError(''); setSuccess(''); }}
+                  style={{
+                    padding: '14px',
+                    borderRadius: '12px',
+                    border: formData.role === 'user' ? '2px solid #3b82f6' : '2px solid rgba(255,255,255,0.1)',
+                    background: formData.role === 'user' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(255,255,255,0.04)',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  <i className="bi bi-book" style={{ fontSize: '1.4rem', color: formData.role === 'user' ? '#3b82f6' : '#64748b', display: 'block', marginBottom: '6px' }}></i>
+                  <span style={{ fontWeight: 700, fontSize: '0.85rem', color: formData.role === 'user' ? '#3b82f6' : '#94a3b8' }}>Reader</span>
+                  <p style={{ fontSize: '0.65rem', color: '#64748b', marginBottom: 0, marginTop: '4px' }}>Read articles & news</p>
+                </div>
+                <div 
+                  onClick={() => { setFormData({ ...formData, role: 'author' }); setError(''); setSuccess(''); }}
+                  style={{
+                    padding: '14px',
+                    borderRadius: '12px',
+                    border: formData.role === 'author' ? '2px solid #10b981' : '2px solid rgba(255,255,255,0.1)',
+                    background: formData.role === 'author' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255,255,255,0.04)',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  <i className="bi bi-pencil-square" style={{ fontSize: '1.4rem', color: formData.role === 'author' ? '#10b981' : '#64748b', display: 'block', marginBottom: '6px' }}></i>
+                  <span style={{ fontWeight: 700, fontSize: '0.85rem', color: formData.role === 'author' ? '#10b981' : '#94a3b8' }}>Reporter</span>
+                  <p style={{ fontSize: '0.65rem', color: '#64748b', marginBottom: 0, marginTop: '4px' }}>Publish & write articles</p>
+                </div>
+              </div>
+
+              {/* Common Fields */}
               <div className="auth-input-group auth-hover-input">
                 <i className="bi bi-person auth-input-icon"></i>
                 <input
@@ -151,24 +249,70 @@ const Signup = () => {
                 />
               </div>
 
-              <div className="auth-role-group">
-                <label className="auth-role-label auth-hover-lift">
-                  <input type="radio" name="role" checked={formData.role === 'user'} onChange={() => setFormData({ ...formData, role: 'user' })} />
-                  <span>Reader</span>
-                </label>
-                <label className="auth-role-label auth-hover-lift">
-                  <input type="radio" name="role" checked={formData.role === 'author'} onChange={() => setFormData({ ...formData, role: 'author' })} />
-                  <span>Author / Reporter</span>
-                </label>
-              </div>
+              {/* Reporter-Specific Fields */}
+              {isReporter && (
+                <>
+                  <div className="auth-input-group auth-hover-input">
+                    <i className="bi bi-telephone auth-input-icon"></i>
+                    <input
+                      type="tel"
+                      name="phone"
+                      placeholder="Phone Number"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      required
+                      className="auth-input auth-input-with-icon"
+                    />
+                  </div>
 
-              <button type="submit" className="auth-submit-btn auth-hover-btn" disabled={loading || transitioning}>
+                  <div className="auth-input-group auth-hover-input">
+                    <i className="bi bi-tag auth-input-icon"></i>
+                    <input
+                      type="text"
+                      name="expertise"
+                      placeholder="Area of Expertise (e.g. Manufacturing, Tech)"
+                      value={formData.expertise}
+                      onChange={(e) => setFormData({ ...formData, expertise: e.target.value })}
+                      required
+                      className="auth-input auth-input-with-icon"
+                    />
+                  </div>
+
+                  <div className="auth-input-group auth-hover-input">
+                    <i className="bi bi-link-45deg auth-input-icon"></i>
+                    <input
+                      type="url"
+                      name="portfolio"
+                      placeholder="Portfolio / LinkedIn URL (optional)"
+                      value={formData.portfolio}
+                      onChange={(e) => setFormData({ ...formData, portfolio: e.target.value })}
+                      className="auth-input auth-input-with-icon"
+                    />
+                  </div>
+
+                  <div className="auth-input-group auth-hover-input" style={{ alignItems: 'flex-start' }}>
+                    <i className="bi bi-chat-left-text auth-input-icon" style={{ marginTop: '14px' }}></i>
+                    <textarea
+                      name="bio"
+                      placeholder="Brief bio — Why do you want to be a reporter? (min 20 chars)"
+                      value={formData.bio}
+                      onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                      required
+                      className="auth-input auth-input-with-icon"
+                      rows={3}
+                      style={{ resize: 'none', minHeight: '80px' }}
+                    />
+                  </div>
+                </>
+              )}
+
+              <button type="submit" className="auth-submit-btn auth-hover-btn" disabled={loading || transitioning} style={isReporter ? { background: 'linear-gradient(135deg, #10b981, #059669)' } : {}}>
                 {transitioning ? (
                   <><i className="bi bi-check-circle-fill"></i> Account Created!</>
                 ) : loading ? (
-                  <><span className="auth-spinner"></span> Creating Account...</>
+                  <><span className="auth-spinner"></span> {isReporter ? 'Submitting Application...' : 'Creating Account...'}</>
                 ) : (
-                  'Create Account'
+                  isReporter ? 'Apply as Reporter →' : 'Create Reader Account'
                 )}
               </button>
             </form>

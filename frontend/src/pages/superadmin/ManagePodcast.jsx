@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Table, Button, Badge, Modal, Form, Spinner } from 'react-bootstrap';
 import axios from 'axios';
+import API_BASE from '../../config/api';
 
 const ManagePodcast = () => {
   const [guests, setGuests] = useState([]);
@@ -10,7 +11,7 @@ const ManagePodcast = () => {
 
   const fetchGuests = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/podcast');
+      const response = await axios.get(`${API_BASE}/api/podcast`);
       setGuests(response.data);
       setLoading(false);
     } catch (err) {
@@ -25,7 +26,7 @@ const ManagePodcast = () => {
 
   const handleStatusUpdate = async (id, status) => {
     try {
-      await axios.put(`http://localhost:5000/api/podcast/${id}/status`, { status });
+      await axios.put(`${API_BASE}/api/podcast/${id}/status`, { status });
       fetchGuests();
     } catch (err) {
       alert('Failed to update status');
@@ -35,7 +36,7 @@ const ManagePodcast = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this registration?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/podcast/${id}`);
+        await axios.delete(`${API_BASE}/api/podcast/${id}`);
         fetchGuests();
       } catch (err) {
         alert('Failed to delete registration');

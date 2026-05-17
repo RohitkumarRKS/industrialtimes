@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import API_BASE from '../../config/api';
 
 /* ─────────────────────────────────────────────────────────────────
    Slot config — single source of truth for dimensions & labels
@@ -77,7 +78,7 @@ const ManageAds = () => {
   const fetchAds = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get('http://localhost:5000/api/ads/all', config);
+      const { data } = await axios.get(`${API_BASE}/api/ads/all`, config);
       setAds(data);
     } catch (err) {
       setError('Failed to fetch ads');
@@ -114,7 +115,7 @@ const ManageAds = () => {
     formData.append('image', file);
     setUploading(true);
     try {
-      const { data } = await axios.post('http://localhost:5000/api/upload', formData, {
+      const { data } = await axios.post(`${API_BASE}/api/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setCurrentAd(prev => ({ ...prev, imageUrl: data.imageUrl }));
@@ -130,7 +131,7 @@ const ManageAds = () => {
     e.preventDefault();
     if (!currentAd.imageUrl) { setError('Please upload an ad image first.'); return; }
     try {
-      await axios.post('http://localhost:5000/api/ads', currentAd, config);
+      await axios.post(`${API_BASE}/api/ads`, currentAd, config);
       setSuccess('Ad saved successfully!');
       fetchAds();
       setTimeout(handleClose, 1200);
@@ -141,7 +142,7 @@ const ManageAds = () => {
 
   const handleToggle = async (ad) => {
     try {
-      await axios.patch(`http://localhost:5000/api/ads/${ad.id}/toggle`, {}, config);
+      await axios.patch(`${API_BASE}/api/ads/${ad.id}/toggle`, {}, config);
       fetchAds();
     } catch { setError('Toggle failed'); }
   };
@@ -149,7 +150,7 @@ const ManageAds = () => {
   const handleDelete = async (ad) => {
     if (!window.confirm(`Delete this ad? This cannot be undone.`)) return;
     try {
-      await axios.delete(`http://localhost:5000/api/ads/${ad.id}`, config);
+      await axios.delete(`${API_BASE}/api/ads/${ad.id}`, config);
       fetchAds();
     } catch { setError('Delete failed'); }
   };
@@ -230,7 +231,7 @@ const ManageAds = () => {
             <tbody>
               {ads.map(ad => {
                 const slot = AD_SLOTS.find(s => s.id === ad.slot);
-                const imgSrc = ad.imageUrl?.startsWith('http') ? ad.imageUrl : `http://localhost:5000${ad.imageUrl}`;
+                const imgSrc = ad.imageUrl?.startsWith('http') ? ad.imageUrl : `${API_BASE}${ad.imageUrl}`;
                 return (
                   <tr key={ad.id}>
                     <td>
@@ -324,7 +325,7 @@ const ManageAds = () => {
                   {currentAd.imageUrl && (
                     <div className="publish-preview-img">
                       <img
-                        src={currentAd.imageUrl.startsWith('http') ? currentAd.imageUrl : `http://localhost:5000${currentAd.imageUrl}`}
+                        src={currentAd.imageUrl.startsWith('http') ? currentAd.imageUrl : `${API_BASE}${currentAd.imageUrl}`}
                         alt="preview"
                       />
                     </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Badge } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import API_BASE from '../config/api';
 
 const UpgradePlan = () => {
   const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly', 'quarterly', 'yearly'
@@ -111,7 +112,7 @@ const UpgradePlan = () => {
       const amount = plan.price[billingCycle];
       
       // 1. Create order on backend
-      const orderResponse = await fetch('http://localhost:5000/api/membership/create-order', {
+      const orderResponse = await fetch(`${API_BASE}/api/membership/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount, planId: plan.id, billingCycle })
@@ -131,7 +132,7 @@ const UpgradePlan = () => {
         order_id: orderData.id,
         handler: async function (response) {
           // 3. Verify payment on backend
-          const verifyRes = await fetch('http://localhost:5000/api/membership/verify-payment', {
+          const verifyRes = await fetch(`${API_BASE}/api/membership/verify-payment`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

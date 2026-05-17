@@ -21,6 +21,9 @@ import AuthorProfile from './pages/AuthorProfile';
 import Advertisement from './components/Advertisement';
 import UpgradePlan from './pages/UpgradePlan';
 import UserProfile from './pages/UserProfile';
+import CorporateChoosePlan from './pages/corporate/CorporateChoosePlan';
+import CorporateLogin from './pages/corporate/CorporateLogin';
+import ReporterDashboard from './pages/ReporterDashboard';
 
 const PublicLayout = () => (
   <div className="d-flex flex-column min-vh-100">
@@ -51,6 +54,9 @@ function App() {
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/corporate/choose-plan" element={<CorporateChoosePlan />} />
+          <Route path="/corporate/login" element={<CorporateLogin />} />
+          <Route path="/reporter-dashboard" element={<ReporterDashboard />} />
           <Route 
             path="/admin/*" 
             element={

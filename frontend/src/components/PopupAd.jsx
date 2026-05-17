@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Button } from 'react-bootstrap';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE from '../config/api';
 
 const PopupAd = () => {
   const [show, setShow] = useState(false);
@@ -19,7 +20,7 @@ const PopupAd = () => {
     }
     const fetchPopupAd = async () => {
       try {
-        const { data } = await axios.get('http://localhost:5000/api/ads');
+        const { data } = await axios.get(`${API_BASE}/api/ads`);
         // Find global popup ad or first active popup
         const popupAd = data.find(a => a.type === 'popup' && a.active);
         if (popupAd) {
@@ -36,7 +37,7 @@ const PopupAd = () => {
 
   if (!ad) return null;
 
-  const adImg = ad.imageUrl.startsWith('http') ? ad.imageUrl : `http://localhost:5000${ad.imageUrl}`;
+  const adImg = ad.imageUrl.startsWith('http') ? ad.imageUrl : `${API_BASE}${ad.imageUrl}`;
 
   return (
     <Modal 

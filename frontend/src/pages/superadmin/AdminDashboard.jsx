@@ -5,6 +5,8 @@ import ManageNews from './ManageNews';
 import ManageAds from './ManageAds';
 import AdminNotifications from './AdminNotifications';
 import ManagePodcast from './ManagePodcast';
+import ManagePlans from './ManagePlans';
+import API_BASE from '../../config/api';
 
 /* ────────────────────────────────────────────────────────
    DASHBOARD HOME — Stats & Overview
@@ -45,7 +47,7 @@ const AdminHome = () => {
   useEffect(() => {
     const fetchArticles = async () => {
       try {
-        const { data } = await axios.get('http://localhost:5000/api/articles');
+        const { data } = await axios.get(`${API_BASE}/api/articles`);
         setArticles(data || []);
       } catch (error) {
         console.error("Error fetching articles", error);
@@ -451,7 +453,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchGlobalData = async () => {
       try {
-        const { data } = await axios.get('http://localhost:5000/api/articles');
+        const { data } = await axios.get(`${API_BASE}/api/articles`);
         setGlobalArticles(data || []);
       } catch (e) {
         console.error("Global fetch error", e);
@@ -482,6 +484,7 @@ const AdminDashboard = () => {
     { name: 'Analytics', path: '/admin/analytics', icon: 'bi-graph-up-arrow' },
     { name: 'Ad Management', path: '/admin/ads', icon: 'bi-megaphone-fill' },
     { name: 'Podcast Guests', path: '/admin/podcast', icon: 'bi-mic-fill' },
+    { name: 'Corporate Plans', path: '/admin/plans', icon: 'bi-credit-card-2-front-fill' },
     { name: 'Notifications', path: '/admin/notifications', icon: 'bi-bell-fill' }
   ];
 
@@ -504,6 +507,7 @@ const AdminDashboard = () => {
     if (location.pathname === '/admin/news') return 'Manage News';
     if (location.pathname === '/admin/podcast') return 'Podcast Management';
     if (location.pathname === '/admin/notifications') return 'System Notifications';
+    if (location.pathname === '/admin/plans') return 'Corporate Plans';
     return 'Dashboard';
   };
 
@@ -649,6 +653,7 @@ const AdminDashboard = () => {
             <Route path="/news" element={<ManageNews />} />
             <Route path="/podcast" element={<ManagePodcast />} />
             <Route path="/ads" element={<ManageAds />} />
+            <Route path="/plans" element={<ManagePlans />} />
             <Route path="/notifications" element={<AdminNotifications />} />
           </Routes>
         </div>
@@ -700,7 +705,7 @@ const AdminDashboard = () => {
                       const formData = new FormData();
                       formData.append('image', file);
                       try {
-                        const { data } = await axios.post('http://localhost:5000/api/upload', formData, {
+                        const { data } = await axios.post(`${API_BASE}/api/upload`, formData, {
                           headers: { 'Content-Type': 'multipart/form-data' }
                         });
                         setTempProfile({...tempProfile, photo: data.imageUrl});
