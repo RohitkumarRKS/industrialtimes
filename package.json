@@ -3,11 +3,9 @@
   "version": "1.0.0",
   "description": "Premium Industrial Media Platform",
   "scripts": {
-    "install:frontend": "cd frontend && npm install",
-    "install:backend": "cd backend && npm install",
-    "build:frontend": "cd frontend && npm run build",
-    "build": "npm run install:frontend && npm run install:backend && npm run build:frontend",
+    "postinstall": "cd frontend && npm install && cd ../backend && npm install && cd ../frontend && npm run build",
     "start": "node backend/server.js",
+    "build": "cd frontend && npm install && cd ../backend && npm install && cd ../frontend && npm run build",
     "dev": "npm run dev --prefix frontend & node backend/server.js",
     "frontend": "npm run dev --prefix frontend",
     "backend": "node backend/server.js",
