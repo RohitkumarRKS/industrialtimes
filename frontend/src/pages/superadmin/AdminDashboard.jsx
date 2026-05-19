@@ -443,7 +443,7 @@ const AnalyticsPage = ({ articles = [] }) => {
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const adminInfo = JSON.parse(localStorage.getItem('adminInfo'));
+  const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo'));
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
 
@@ -483,7 +483,7 @@ const AdminDashboard = () => {
     return () => window.removeEventListener('click', closeMenus);
   }, []);
   const handleLogout = () => {
-    localStorage.removeItem('adminInfo');
+    sessionStorage.removeItem('adminInfo');
     navigate('/');
   };
 

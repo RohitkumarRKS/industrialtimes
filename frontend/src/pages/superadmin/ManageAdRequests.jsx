@@ -9,7 +9,7 @@ const ManageAdRequests = () => {
   const [actionMsg, setActionMsg] = useState({ text: '', type: '' });
   const [rejectNotes, setRejectNotes] = useState({});
 
-  const adminInfo = JSON.parse(localStorage.getItem('adminInfo'));
+  const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo'));
   const config = { headers: { Authorization: `Bearer ${adminInfo?.token}` } };
 
   const fetchRequests = async () => {

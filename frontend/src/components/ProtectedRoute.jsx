@@ -4,7 +4,7 @@ import AdminLogin from '../pages/superadmin/AdminLogin';
 
 const ProtectedRoute = ({ children, isAdmin }) => {
   if (isAdmin) {
-    const adminInfo = JSON.parse(localStorage.getItem('adminInfo'));
+    const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo'));
     if (!adminInfo || adminInfo.role !== 'superadmin') {
        return <AdminLogin />;
     }

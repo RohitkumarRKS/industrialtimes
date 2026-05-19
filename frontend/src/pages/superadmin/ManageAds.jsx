@@ -72,7 +72,7 @@ const ManageAds = () => {
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const adminInfo = JSON.parse(localStorage.getItem('adminInfo'));
+  const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo'));
   const config = { headers: { Authorization: `Bearer ${adminInfo?.token}` } };
 
   const fetchAds = async () => {

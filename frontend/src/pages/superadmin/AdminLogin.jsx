@@ -14,9 +14,9 @@ const AdminLogin = () => {
   useEffect(() => {
     setEmail('');
     setPassword('');
-    const adminInfo = JSON.parse(localStorage.getItem('adminInfo'));
+    const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo'));
     if (adminInfo && adminInfo.role === 'superadmin') {
-      navigate('/superadmin@123/');
+      window.location.href = '/superadmin@123/';
     }
   }, [navigate]);
 
@@ -33,9 +33,9 @@ const AdminLogin = () => {
         role: 'superadmin',
         token: 'test-token-123'
       };
-      localStorage.setItem('adminInfo', JSON.stringify(testAdmin));
+      sessionStorage.setItem('adminInfo', JSON.stringify(testAdmin));
       setTransitioning(true);
-      setTimeout(() => navigate('/superadmin@123/'), 800);
+      setTimeout(() => window.location.href = '/superadmin@123/', 800);
       return;
     }
 
@@ -48,9 +48,9 @@ const AdminLogin = () => {
         return;
       }
 
-      localStorage.setItem('adminInfo', JSON.stringify(data));
+      sessionStorage.setItem('adminInfo', JSON.stringify(data));
       setTransitioning(true);
-      setTimeout(() => navigate('/superadmin@123/'), 800);
+      setTimeout(() => window.location.href = '/superadmin@123/', 800);
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid administrative credentials');
       setLoading(false);
