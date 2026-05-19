@@ -10,7 +10,7 @@ const PopupAd = () => {
   const location = useLocation();
 
   // Do not show popup on admin, login, or signup pages
-  const excludedPaths = ['/admin', '/login', '/signup', '/admin-login'];
+  const excludedPaths = ['/admin', '/login', '/signup', '/admin-login', '/superadmin@123'];
   const isExcluded = excludedPaths.some(path => location.pathname.startsWith(path));
 
   useEffect(() => {

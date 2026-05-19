@@ -14,7 +14,11 @@ const AdminLogin = () => {
   useEffect(() => {
     setEmail('');
     setPassword('');
-  }, []);
+    const adminInfo = JSON.parse(localStorage.getItem('adminInfo'));
+    if (adminInfo && adminInfo.role === 'superadmin') {
+      navigate('/superadmin@123/');
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +35,7 @@ const AdminLogin = () => {
       };
       localStorage.setItem('adminInfo', JSON.stringify(testAdmin));
       setTransitioning(true);
-      setTimeout(() => navigate('/admin'), 800);
+      setTimeout(() => navigate('/superadmin@123/'), 800);
       return;
     }
 
@@ -46,7 +50,7 @@ const AdminLogin = () => {
 
       localStorage.setItem('adminInfo', JSON.stringify(data));
       setTransitioning(true);
-      setTimeout(() => navigate('/admin'), 800);
+      setTimeout(() => navigate('/superadmin@123/'), 800);
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid administrative credentials');
       setLoading(false);

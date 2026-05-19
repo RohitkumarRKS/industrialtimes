@@ -488,19 +488,21 @@ const AdminDashboard = () => {
   };
 
   const menuItems = [
-    { name: 'Dashboard', path: '/admin', icon: 'bi-grid-1x2-fill' },
-    { name: 'Manage Media News', path: '/admin/news', icon: 'bi-newspaper' },
-    { name: 'Analytics', path: '/admin/analytics', icon: 'bi-graph-up-arrow' },
-    { name: 'Ad Management', path: '/admin/ads', icon: 'bi-megaphone-fill' },
-    { name: 'Podcast Guests', path: '/admin/podcast', icon: 'bi-mic-fill' },
-    { name: 'Email Settings', path: '/admin/email-settings', icon: 'bi-envelope-at-fill' },
-    { name: 'Corporate Plans', path: '/admin/plans', icon: 'bi-credit-card-2-front-fill' },
-    { name: 'Ad Requests', path: '/admin/ad-requests', icon: 'bi-envelope-paper-fill' },
-    { name: 'Notifications', path: '/admin/notifications', icon: 'bi-bell-fill' }
+    { name: 'Dashboard', path: '/superadmin@123', icon: 'bi-grid-1x2-fill' },
+    { name: 'Manage Media News', path: '/superadmin@123/news', icon: 'bi-newspaper' },
+    { name: 'Analytics', path: '/superadmin@123/analytics', icon: 'bi-graph-up-arrow' },
+    { name: 'Ad Management', path: '/superadmin@123/ads', icon: 'bi-megaphone-fill' },
+    { name: 'Podcast Guests', path: '/superadmin@123/podcast', icon: 'bi-mic-fill' },
+    { name: 'Email Settings', path: '/superadmin@123/email-settings', icon: 'bi-envelope-at-fill' },
+    { name: 'Corporate Plans', path: '/superadmin@123/plans', icon: 'bi-credit-card-2-front-fill' },
+    { name: 'Ad Requests', path: '/superadmin@123/ad-requests', icon: 'bi-envelope-paper-fill' },
+    { name: 'Notifications', path: '/superadmin@123/notifications', icon: 'bi-bell-fill' }
   ];
 
   const isActive = (item) => {
-    if (item.path === '/admin') return location.pathname === '/admin';
+    if (item.path === '/superadmin@123') {
+      return location.pathname === '/superadmin@123' || location.pathname === '/superadmin@123/';
+    }
     if (item.path) return location.pathname.startsWith(item.path);
     return false;
   };
@@ -512,15 +514,16 @@ const AdminDashboard = () => {
   };
 
   const getPageTitle = () => {
-    if (location.pathname === '/admin') return 'Dashboard';
-    if (location.pathname === '/admin/analytics') return 'Analytics';
-    if (location.pathname === '/admin/ads') return 'Ad Management';
-    if (location.pathname === '/admin/news') return 'Manage News';
-    if (location.pathname === '/admin/podcast') return 'Podcast Management';
-    if (location.pathname === '/admin/email-settings') return 'Email Settings';
-    if (location.pathname === '/admin/notifications') return 'System Notifications';
-    if (location.pathname === '/admin/plans') return 'Corporate Plans';
-    if (location.pathname === '/admin/ad-requests') return 'Ad Requests';
+    const p = location.pathname;
+    if (p === '/superadmin@123' || p === '/superadmin@123/') return 'Dashboard';
+    if (p === '/superadmin@123/analytics') return 'Analytics';
+    if (p === '/superadmin@123/ads') return 'Ad Management';
+    if (p === '/superadmin@123/news') return 'Manage News';
+    if (p === '/superadmin@123/podcast') return 'Podcast Management';
+    if (p === '/superadmin@123/email-settings') return 'Email Settings';
+    if (p === '/superadmin@123/notifications') return 'System Notifications';
+    if (p === '/superadmin@123/plans') return 'Corporate Plans';
+    if (p === '/superadmin@123/ad-requests') return 'Ad Requests';
     return 'Dashboard';
   };
 

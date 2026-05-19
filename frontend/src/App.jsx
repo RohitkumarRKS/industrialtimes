@@ -64,7 +64,7 @@ function App() {
           <Route path="/user-dashboard" element={<UserDashboard />} />
           <Route path="/podcast-apply" element={<PodcastApply />} />
           <Route 
-            path="/admin/*" 
+            path="/superadmin@123/*" 
             element={
               <ProtectedRoute isAdmin={true}>
                 <AdminDashboard />
