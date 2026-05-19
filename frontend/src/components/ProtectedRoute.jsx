@@ -1,11 +1,12 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
+import AdminLogin from '../pages/superadmin/AdminLogin';
 
 const ProtectedRoute = ({ children, isAdmin }) => {
   if (isAdmin) {
     const adminInfo = JSON.parse(localStorage.getItem('adminInfo'));
     if (!adminInfo || adminInfo.role !== 'superadmin') {
-       return <Navigate to="/superadmin@123" />;
+       return <AdminLogin />;
     }
     return children;
   }

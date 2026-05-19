@@ -54,7 +54,6 @@ function App() {
       <Routes>
         {/* Full Screen Layout (Admin, Login, Signup) */}
         <Route element={<AdminLayout />}>
-          <Route path="/superadmin@123" element={<AdminLogin />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/corporate/choose-plan" element={<CorporateChoosePlan />} />
