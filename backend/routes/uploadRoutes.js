@@ -38,7 +38,7 @@ router.post('/', upload.single('image'), (req, res) => {
   }
   res.status(200).json({
     message: 'Image uploaded successfully',
-    imageUrl: `http://localhost:5000/uploads/${req.file.filename}`
+    imageUrl: `/uploads/${req.file.filename}`
   });
 });
 
