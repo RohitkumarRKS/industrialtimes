@@ -135,6 +135,42 @@ const ManagePodcast = () => {
     }
   };
 
+  const downloadQRCode = () => {
+    const svg = document.getElementById('podcast-qr-code');
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width + 40;
+      canvas.height = img.height + 40;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 20, 20);
+      const pngFile = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.download = 'podcast_qr_code.png';
+      downloadLink.href = pngFile;
+      downloadLink.click();
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+  };
+
+  const handleShareSystem = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Industrial Times Podcast',
+          text: 'Apply to be a guest on the Industrial Times Podcast!',
+          url: podcastApplyUrl,
+        });
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'approved': return <Badge bg="success">Approved</Badge>;
@@ -434,22 +470,88 @@ const ManagePodcast = () => {
           <Modal.Title className="fw-black">Share Podcast Application</Modal.Title>
         </Modal.Header>
         <Modal.Body className="text-center p-4">
-          <p className="text-muted mb-4">Have guests scan this QR code or use the link below to apply for the podcast.</p>
-          <div className="bg-light p-4 rounded-4 d-inline-block mb-4 shadow-sm border">
-            <QRCodeSVG value={podcastApplyUrl} size={200} />
+          <p className="text-muted mb-4">Have guests scan this QR code or use the link/social options below to apply for the podcast.</p>
+          
+          <div className="bg-white p-4 rounded-4 d-inline-block mb-4 shadow-sm border">
+            <QRCodeSVG id="podcast-qr-code" value={podcastApplyUrl} size={200} />
           </div>
-          <div className="input-group mb-3">
-            <input type="text" className="form-control bg-light" value={podcastApplyUrl} readOnly />
+
+          <div className="d-flex justify-content-center gap-2 mb-4">
+            <Button 
+              variant="outline-danger" 
+              onClick={downloadQRCode}
+              className="rounded-pill px-3 shadow-sm d-flex align-items-center gap-2 btn-sm fw-bold"
+            >
+              <i className="bi bi-download"></i> Download QR Code
+            </Button>
+            {navigator.share && (
+              <Button 
+                variant="outline-primary" 
+                onClick={handleShareSystem}
+                className="rounded-pill px-3 shadow-sm d-flex align-items-center gap-2 btn-sm fw-bold"
+              >
+                <i className="bi bi-share-fill"></i> Share via System
+              </Button>
+            )}
+          </div>
+
+          <div className="input-group mb-4 shadow-sm rounded">
+            <input type="text" className="form-control bg-light border-end-0 small fw-bold" value={podcastApplyUrl} readOnly />
             <Button 
               variant={copied ? "success" : "dark"}
+              className="px-4 fw-bold border-start-0"
               onClick={() => {
                 navigator.clipboard.writeText(podcastApplyUrl);
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
               }}
             >
-              <i className={`bi ${copied ? 'bi-check-lg' : 'bi-clipboard'}`}></i> {copied ? 'Copied!' : 'Copy'}
+              <i className={`bi ${copied ? 'bi-check-lg' : 'bi-clipboard'}`}></i> {copied ? 'Copied!' : 'Copy Link'}
             </Button>
+          </div>
+
+          <div className="border-top pt-4 mt-3">
+            <h6 className="fw-black mb-3 small text-muted text-uppercase letter-spacing-2">Share to Social Media</h6>
+            <div className="d-flex justify-content-center gap-3">
+              <a 
+                href={`https://api.whatsapp.com/send?text=${encodeURIComponent('Apply to be a guest on the Industrial Times Podcast! Fill out the application here: ' + podcastApplyUrl)}`}
+                target="_blank" 
+                rel="noreferrer"
+                className="btn btn-outline-success rounded-circle d-flex align-items-center justify-content-center hover-scale shadow-sm"
+                style={{ width: '48px', height: '48px', fontSize: '1.4rem' }}
+                title="Share on WhatsApp"
+              >
+                <i className="bi bi-whatsapp"></i>
+              </a>
+              <a 
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('Apply to be a guest on the Industrial Times Podcast! ')}&url=${encodeURIComponent(podcastApplyUrl)}`}
+                target="_blank" 
+                rel="noreferrer"
+                className="btn btn-outline-dark rounded-circle d-flex align-items-center justify-content-center hover-scale shadow-sm"
+                style={{ width: '48px', height: '48px', fontSize: '1.4rem' }}
+                title="Share on X (Twitter)"
+              >
+                <i className="bi bi-twitter-x"></i>
+              </a>
+              <a 
+                href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(podcastApplyUrl)}`}
+                target="_blank" 
+                rel="noreferrer"
+                className="btn btn-outline-primary rounded-circle d-flex align-items-center justify-content-center hover-scale shadow-sm"
+                style={{ width: '48px', height: '48px', fontSize: '1.4rem' }}
+                title="Share on LinkedIn"
+              >
+                <i className="bi bi-linkedin"></i>
+              </a>
+              <a 
+                href={`mailto:?subject=${encodeURIComponent('Apply to be a guest on the Industrial Times Podcast')}&body=${encodeURIComponent('Hi,\n\nHere is the link to apply for the Industrial Times Podcast:\n\n' + podcastApplyUrl)}`}
+                className="btn btn-outline-danger rounded-circle d-flex align-items-center justify-content-center hover-scale shadow-sm"
+                style={{ width: '48px', height: '48px', fontSize: '1.4rem' }}
+                title="Share via Email"
+              >
+                <i className="bi bi-envelope"></i>
+              </a>
+            </div>
           </div>
         </Modal.Body>
       </Modal>
