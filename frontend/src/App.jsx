@@ -23,6 +23,7 @@ import UpgradePlan from './pages/UpgradePlan';
 import UserProfile from './pages/UserProfile';
 import CorporateChoosePlan from './pages/corporate/CorporateChoosePlan';
 import CorporateLogin from './pages/corporate/CorporateLogin';
+import CorporatePayment from './pages/corporate/CorporatePayment';
 import ReporterDashboard from './pages/ReporterDashboard';
 
 const PublicLayout = () => (
@@ -56,6 +57,7 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/corporate/choose-plan" element={<CorporateChoosePlan />} />
           <Route path="/corporate/login" element={<CorporateLogin />} />
+          <Route path="/corporate/payment" element={<CorporatePayment />} />
           <Route path="/reporter-dashboard" element={<ReporterDashboard />} />
           <Route 
             path="/admin/*" 

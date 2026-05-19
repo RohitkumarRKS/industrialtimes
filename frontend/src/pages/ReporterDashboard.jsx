@@ -58,7 +58,7 @@ const ReporterDashboard = () => {
 
   const handleLogout = () => {
     sessionStorage.removeItem('userInfo');
-    navigate('/login');
+    navigate('/');
   };
 
   const handlePublish = async (e) => {
@@ -67,17 +67,30 @@ const ReporterDashboard = () => {
     setPublishMsg({ text: '', type: '' });
 
     try {
-      const formData = new FormData();
-      formData.append('title', articleForm.title);
-      formData.append('content', articleForm.content);
-      formData.append('category', articleForm.category);
-      formData.append('author', userInfo.name);
+      let imageUrl = '';
       if (articleForm.image) {
+        const formData = new FormData();
         formData.append('image', articleForm.image);
+        const uploadRes = await axios.post(`${API_BASE}/api/upload`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        // Sometimes backend returns relative, sometimes absolute url. We keep it as is.
+        imageUrl = uploadRes.data.imageUrl;
       }
 
-      await axios.post(`${API_BASE}/api/articles`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const articleData = {
+        title: articleForm.title,
+        content: articleForm.content,
+        category: articleForm.category,
+        author: userInfo.name,
+        image: imageUrl
+      };
+
+      await axios.post(`${API_BASE}/api/articles`, articleData, {
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${userInfo.token}`
+        }
       });
 
       setPublishMsg({ text: 'Article published successfully! It is now live on the website.', type: 'success' });
@@ -97,7 +110,8 @@ const ReporterDashboard = () => {
   if (!userInfo) return null;
 
   const myArticles = articles.filter(a =>
-    a.author && a.author.toLowerCase() === userInfo.name.toLowerCase()
+    (a.authorId && parseInt(a.authorId) === parseInt(userInfo.id)) ||
+    (a.author && a.author.toLowerCase() === userInfo.name.toLowerCase())
   );
   const totalViews = myArticles.reduce((sum, a) => sum + (a.views || 0), 0);
   const topArticle = myArticles.length > 0 ? [...myArticles].sort((a, b) => (b.views || 0) - (a.views || 0))[0] : null;

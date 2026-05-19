@@ -34,8 +34,6 @@ router.post('/create-order', async (req, res) => {
   }
 });
 
-// @route   POST /api/membership/verify-payment
-// @desc    Verify Razorpay signature and update user plan
 router.post('/verify-payment', async (req, res) => {
   try {
     const { 
@@ -44,8 +42,27 @@ router.post('/verify-payment', async (req, res) => {
       razorpay_signature,
       userId,
       planId,
-      billingCycle
+      billingCycle,
+      mock
     } = req.body;
+
+    if (mock) {
+      const user = await User.findByPk(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+
+      user.membershipPlan = planId;
+      
+      // Calculate expiry
+      const expiry = new Date();
+      if (billingCycle === 'monthly') expiry.setMonth(expiry.getMonth() + 1);
+      else if (billingCycle === 'quarterly') expiry.setMonth(expiry.getMonth() + 3);
+      else if (billingCycle === 'yearly') expiry.setFullYear(expiry.getFullYear() + 1);
+      
+      user.planExpiry = expiry;
+      await user.save();
+
+      return res.json({ message: "Mock payment verified and plan activated successfully", plan: planId });
+    }
 
     const sign = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSign = crypto

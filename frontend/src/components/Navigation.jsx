@@ -34,7 +34,7 @@ const Navigation = () => {
   const handleLogout = () => {
     sessionStorage.removeItem('userInfo');
     handleClose();
-    navigate('/login');
+    navigate('/');
   };
 
   const [showLocation, setShowLocation] = useState(false);
@@ -301,8 +301,8 @@ const Navigation = () => {
           {/* Right: Translate | Links | Sign In | Social Icons */}
           <div className="d-flex align-items-center gap-2 gap-md-3">
             
-            <Link to="/login" className="utility-signin small fw-black">
-              {userInfo ? userInfo.name.split(' ')[0] : 'Sign In'}
+            <Link to={userInfo ? "/profile" : "/login"} className="utility-signin small fw-black">
+              {userInfo ? userInfo.name : 'Sign In'}
             </Link>
 
             <div className="utility-social d-none d-md-flex gap-2">

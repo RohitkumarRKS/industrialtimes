@@ -47,6 +47,10 @@ const Article = sequelize.define('Article', {
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  author: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   highlights: {
     type: DataTypes.TEXT, // Store as JSON string
     allowNull: true

@@ -46,7 +46,7 @@ const Login = () => {
 
   const handleLogout = () => {
     sessionStorage.removeItem('userInfo');
-    navigate('/login');
+    navigate('/');
   };
 
   const handleSignupClick = (e) => {

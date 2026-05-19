@@ -104,7 +104,8 @@ const AdminHome = () => {
     units: article.category,
     date: new Date(article.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     icon: 'bi-file-earmark-richtext',
-    color: '#8b5cf6'
+    color: '#da251d',
+    author: article.author
   }));
 
   // Fallback if empty
@@ -208,6 +209,7 @@ const AdminHome = () => {
                     </div>
                     <div className="new-upcoming-details">
                       <span className="new-upcoming-title" style={{display:'block', maxWidth:'280px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{article.title}</span>
+                      <span className="text-muted x-small" style={{fontSize:'0.75rem', fontWeight:'500'}}>By {article.author || 'Editorial'}</span>
                     </div>
                     <div className="new-upcoming-meta">
                       <span className="new-upcoming-units">{article.units}</span>
@@ -249,14 +251,14 @@ const AdminHome = () => {
             <svg viewBox="0 0 800 200" preserveAspectRatio="none" className="new-chart-svg">
               <defs>
                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.4" />
-                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
+                  <stop offset="0%" stopColor="#da251d" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#da251d" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
               <path d="M0,180 C50,160 100,190 150,170 C200,150 250,130 300,160 C350,190 400,70 450,130 C500,190 550,150 600,110 C650,70 700,120 750,90 C780,70 800,80 800,80 L800,200 L0,200 Z" fill="url(#chartGradient)" />
-              <path d="M0,180 C50,160 100,190 150,170 C200,150 250,130 300,160 C350,190 400,70 450,130 C500,190 550,150 600,110 C650,70 700,120 750,90 C780,70 800,80 800,80" fill="none" stroke="#8b5cf6" strokeWidth="3" />
-              <circle cx="280" cy="148" r="5" fill="#fff" stroke="#8b5cf6" strokeWidth="2" />
-              <line x1="280" y1="148" x2="280" y2="200" stroke="#8b5cf6" strokeWidth="1" strokeDasharray="4 4" />
+              <path d="M0,180 C50,160 100,190 150,170 C200,150 250,130 300,160 C350,190 400,70 450,130 C500,190 550,150 600,110 C650,70 700,120 750,90 C780,70 800,80 800,80" fill="none" stroke="#da251d" strokeWidth="3" />
+              <circle cx="280" cy="148" r="5" fill="#fff" stroke="#da251d" strokeWidth="2" />
+              <line x1="280" y1="148" x2="280" y2="200" stroke="#da251d" strokeWidth="1" strokeDasharray="4 4" />
               <g transform="translate(250, 100)">
                 <rect width="60" height="36" rx="6" fill="#111" />
                 <text x="30" y="14" fill="#aaa" fontSize="9" textAnchor="middle">Today</text>
@@ -323,7 +325,7 @@ const AdminHome = () => {
                       className="stat-bar" 
                       style={{
                         height: `${height}%`, 
-                        background: i === selectedDayIndex ? '#6366f1' : '#e0e7ff',
+                        background: i === selectedDayIndex ? '#da251d' : '#fecaca',
                         cursor: 'pointer'
                       }}
                       onClick={() => setSelectedDayIndex(i)}
@@ -335,7 +337,7 @@ const AdminHome = () => {
                     <span 
                       key={i} 
                       style={{
-                        color: i === selectedDayIndex ? '#6366f1' : '#aaa',
+                        color: i === selectedDayIndex ? '#da251d' : '#aaa',
                         fontWeight: i === selectedDayIndex ? '800' : '600',
                         cursor: 'pointer'
                       }}
@@ -475,7 +477,7 @@ const AdminDashboard = () => {
   }, []);
   const handleLogout = () => {
     localStorage.removeItem('adminInfo');
-    navigate('/admin-login');
+    navigate('/');
   };
 
   const menuItems = [

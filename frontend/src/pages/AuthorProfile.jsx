@@ -14,7 +14,7 @@ const AuthorProfile = () => {
          const res = await fetch(`${API_BASE}/api/articles`);
          const data = await res.json();
          // Filter articles by author name (mocking this as 'Admin' for now if no author object exists)
-         setArticles(data.filter(a => a.author === name || (!a.author && name === 'Admin')));
+         setArticles(data.filter(a => (a.author && a.author.toLowerCase() === name.toLowerCase()) || (!a.author && name.toLowerCase() === 'admin')));
        } catch (e) {
          console.error(e);
        }

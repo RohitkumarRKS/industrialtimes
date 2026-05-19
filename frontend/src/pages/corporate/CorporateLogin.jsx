@@ -56,8 +56,17 @@ const CorporateLogin = () => {
         selectedPlan
       });
 
-      setSuccess(data.message || 'Corporate account registered! Awaiting admin approval.');
+      setSuccess(data.message || 'Corporate account registered successfully! Redirecting to secure payment...');
       setSignupData({ name: '', email: '', password: '', companyName: '', designation: '', phone: '' });
+      
+      // Auto-login the registered corporate user
+      if (data.token) {
+        sessionStorage.setItem('userInfo', JSON.stringify(data));
+        setTransitioning(true);
+        setTimeout(() => {
+          navigate(`/corporate/payment?plan=${selectedPlan}`);
+        }, 1200);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
@@ -79,7 +88,13 @@ const CorporateLogin = () => {
       sessionStorage.setItem('userInfo', JSON.stringify(data));
       setTransitioning(true);
       setTimeout(() => {
-        navigate('/profile');
+        // If they already have an active subscription, go to profile/dashboard
+        if (data.membershipPlan) {
+          navigate('/profile');
+        } else {
+          // If they haven't paid yet, go to the corporate payment screen!
+          navigate(`/corporate/payment?plan=${data.selectedPlan || selectedPlan || 'basic'}`);
+        }
       }, 800);
     } catch (err) {
       if (err.response?.data?.status === 'pending') {

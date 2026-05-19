@@ -12,6 +12,19 @@ const UserProfile = () => {
   const [showPayment, setShowPayment] = useState(false);
   const navigate = useNavigate();
 
+  // Corporate Specific Dashboard States
+  const [corpTab, setCorpTab] = useState('overview');
+  const [corpAds, setCorpAds] = useState([]);
+  const [corpArticleForm, setCorpArticleForm] = useState({ title: '', content: '', category: 'Articles', image: null });
+  const [corpPublishing, setCorpPublishing] = useState(false);
+  const [corpPublishMsg, setCorpPublishMsg] = useState({ text: '', type: '' });
+
+  const [corpAdForm, setCorpAdForm] = useState({ slot: 'leaderboard', link: '', imageFile: null });
+  const [corpAdUploading, setCorpAdUploading] = useState(false);
+  const [corpAdMsg, setCorpAdMsg] = useState({ text: '', type: '' });
+
+  const [reqStatus, setReqStatus] = useState({ text: '', type: '' });
+
   useEffect(() => {
     const saved = sessionStorage.getItem('userInfo');
     if (saved) {
@@ -22,7 +35,7 @@ const UserProfile = () => {
   }, [navigate]);
 
   useEffect(() => {
-    // Fetch articles for author dashboard
+    // Fetch articles for author and corporate dashboard
     const fetchArticles = async () => {
       try {
         const { data } = await axios.get(`${API_BASE}/api/articles`);
@@ -33,6 +46,21 @@ const UserProfile = () => {
     };
     fetchArticles();
   }, []);
+
+  const fetchCorpAds = async () => {
+    try {
+      const { data } = await axios.get(`${API_BASE}/api/ads`);
+      setCorpAds(data || []);
+    } catch (err) {
+      console.error('Failed to load corporate ads', err);
+    }
+  };
+
+  useEffect(() => {
+    if (userInfo && userInfo.role === 'corporate') {
+      fetchCorpAds();
+    }
+  }, [userInfo]);
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
@@ -60,7 +88,7 @@ const UserProfile = () => {
 
   const handleLogout = () => {
     sessionStorage.removeItem('userInfo');
-    navigate('/login');
+    navigate('/');
   };
 
   const planPrices = {
@@ -104,11 +132,147 @@ const UserProfile = () => {
     }
   };
 
+  const getPlanQuotas = () => {
+    const plan = userInfo?.membershipPlan;
+    if (plan === 'basic') return { articles: 3, ads: 0 };
+    if (plan === 'standard') return { articles: 5, ads: 0 };
+    if (plan === 'premium') return { articles: 7, ads: 2 };
+    if (plan === 'pro') return { articles: 99999, ads: 4 };
+    return { articles: 0, ads: 0 };
+  };
+
+  const handleCorpPublish = async (e) => {
+    e.preventDefault();
+    setCorpPublishing(true);
+    setCorpPublishMsg({ text: '', type: '' });
+
+    // Quota validation
+    const quota = getPlanQuotas();
+    const myArticlesCount = articles.filter(a => parseInt(a.authorId) === parseInt(userInfo.id)).length;
+    if (myArticlesCount >= quota.articles) {
+      setCorpPublishMsg({ 
+        text: `🚫 Monthly limit reached! Your ${planLabels[userInfo.membershipPlan]} plan allows up to ${quota.articles} articles per month. Please upgrade your tier for higher volume publishing.`, 
+        type: 'danger' 
+      });
+      setCorpPublishing(false);
+      return;
+    }
+
+    try {
+      let imageUrl = '';
+      if (corpArticleForm.image) {
+        const formData = new FormData();
+        formData.append('image', corpArticleForm.image);
+        const uploadRes = await axios.post(`${API_BASE}/api/upload`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        imageUrl = uploadRes.data.imageUrl;
+      }
+
+      const articleData = {
+        title: corpArticleForm.title,
+        content: corpArticleForm.content,
+        category: corpArticleForm.category,
+        author: userInfo.companyName || userInfo.name,
+        image: imageUrl
+      };
+
+      await axios.post(`${API_BASE}/api/articles`, articleData, {
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${userInfo.token}`
+        }
+      });
+
+      setCorpPublishMsg({ text: '🎉 Premium Corporate Article successfully published! It is now live on the global feed.', type: 'success' });
+      setCorpArticleForm({ title: '', content: '', category: 'Articles', image: null });
+      
+      // Refresh articles
+      const { data } = await axios.get(`${API_BASE}/api/articles`);
+      setArticles(data || []);
+
+      // Reset file input
+      const fileInput = document.getElementById('corp-article-image');
+      if (fileInput) fileInput.value = '';
+    } catch (err) {
+      setCorpPublishMsg({ text: err.response?.data?.message || 'Failed to publish article', type: 'danger' });
+    } finally {
+      setCorpPublishing(false);
+    }
+  };
+
+  const handleCorpAdUpload = async (e) => {
+    e.preventDefault();
+    setCorpAdUploading(true);
+    setCorpAdMsg({ text: '', type: '' });
+
+    // Quota validation
+    const quota = getPlanQuotas();
+    const myAds = corpAds.filter(ad => ad.advertiser === userInfo.companyName);
+    if (myAds.length >= quota.ads) {
+      setCorpAdMsg({ 
+        text: `🚫 Ad limit reached! Your ${planLabels[userInfo.membershipPlan]} plan allows up to ${quota.ads} active banner ad campaigns. Please upgrade to executive level for more slots.`, 
+        type: 'danger' 
+      });
+      setCorpAdUploading(false);
+      return;
+    }
+
+    if (!corpAdForm.imageFile) {
+      setCorpAdMsg({ text: 'Please select an image creative graphic for your advertisement.', type: 'danger' });
+      setCorpAdUploading(false);
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('image', corpAdForm.imageFile);
+      const uploadRes = await axios.post(`${API_BASE}/api/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const imageUrl = uploadRes.data.imageUrl;
+
+      await axios.post(`${API_BASE}/api/ads`, {
+        slot: corpAdForm.slot,
+        imageUrl: imageUrl,
+        link: corpAdForm.link,
+        advertiser: userInfo.companyName || userInfo.name,
+        active: true,
+        label: 'Sponsored'
+      }, {
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${userInfo.token}`
+        }
+      });
+
+      setCorpAdMsg({ text: '🚀 Sponsored banner ad campaign successfully verified and launched live!', type: 'success' });
+      setCorpAdForm({ slot: 'leaderboard', link: '', imageFile: null });
+      fetchCorpAds();
+
+      // Reset file input
+      const fileInput = document.getElementById('corp-ad-image');
+      if (fileInput) fileInput.value = '';
+    } catch (err) {
+      setCorpAdMsg({ text: err.response?.data?.message || 'Failed to submit campaign', type: 'danger' });
+    } finally {
+      setCorpAdUploading(false);
+    }
+  };
+
+  const handleCampaignReq = (requestName) => {
+    setReqStatus({ text: `⏳ Campaign request submitted! Your corporate account manager will contact you within 2 hours to deploy the "${requestName}" campaign assets.`, type: 'success' });
+    setTimeout(() => {
+      setReqStatus({ text: '', type: '' });
+    }, 6000);
+  };
+
   if (!userInfo) return null;
 
   const role = userInfo.role;
   const myArticles = articles.filter(a => 
-    a.author && a.author.toLowerCase() === userInfo.name.toLowerCase()
+    (a.authorId && parseInt(a.authorId) === parseInt(userInfo.id)) ||
+    (a.author && a.author.toLowerCase() === userInfo.name.toLowerCase())
   );
   const totalViews = myArticles.reduce((sum, a) => sum + (a.views || 0), 0);
 
@@ -321,7 +485,403 @@ const UserProfile = () => {
                     </Col>
                   </Row>
 
-                  {/* === CORPORATE: Purchase Plan CTA === */}
+                  {/* === CORPORATE: Premium Active Subscription Dashboard === */}
+                  {role === 'corporate' && userInfo.membershipPlan && (
+                    <div className="mt-5 pt-4 border-top">
+                      <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+                        <h4 className="fw-black mb-0 text-dark">
+                          <i className="bi bi-shield-check text-primary me-2"></i>
+                          Corporate Partner Portal
+                        </h4>
+                        <Badge bg="primary" className="py-2 px-3 text-uppercase">
+                          {planLabels[userInfo.membershipPlan]} Package Active
+                        </Badge>
+                      </div>
+
+                      {/* Tab Navigation */}
+                      <div className="d-flex gap-2 mb-4 flex-wrap">
+                        <Button 
+                          variant={corpTab === 'overview' ? 'primary' : 'light'}
+                          className="fw-bold rounded-3 px-3 py-2"
+                          onClick={() => setCorpTab('overview')}
+                        >
+                          <i className="bi bi-grid-1x2 me-1"></i> Overview
+                        </Button>
+                        <Button 
+                          variant={corpTab === 'article' ? 'primary' : 'light'}
+                          className="fw-bold rounded-3 px-3 py-2"
+                          onClick={() => setCorpTab('article')}
+                        >
+                          <i className="bi bi-pencil-square me-1"></i> Post Articles
+                        </Button>
+                        
+                        {/* Ads tab only for Premium & Pro levels */}
+                        {getPlanQuotas().ads > 0 && (
+                          <Button 
+                            variant={corpTab === 'ads' ? 'primary' : 'light'}
+                            className="fw-bold rounded-3 px-3 py-2"
+                            onClick={() => setCorpTab('ads')}
+                          >
+                            <i className="bi bi-image me-1"></i> Ad Campaigns
+                          </Button>
+                        )}
+
+                        <Button 
+                          variant={corpTab === 'requests' ? 'primary' : 'light'}
+                          className="fw-bold rounded-3 px-3 py-2"
+                          onClick={() => setCorpTab('requests')}
+                        >
+                          <i className="bi bi-mailbox me-1"></i> Requests Desk
+                        </Button>
+                      </div>
+
+                      {/* --- TAB 1: OVERVIEW & METRICS --- */}
+                      {corpTab === 'overview' && (
+                        <div>
+                          <Row className="g-3 mb-4">
+                            <Col md={6}>
+                              <Card className="border p-3 rounded-4 shadow-sm h-100 bg-white">
+                                <div className="d-flex align-items-center justify-content-between mb-2">
+                                  <span className="fw-bold text-muted small">ARTICLE PUBLISHING LIMITS</span>
+                                  <i className="bi bi-file-earmark-text text-primary fs-5"></i>
+                                </div>
+                                <h3 className="fw-black text-dark mb-2">
+                                  {myArticles.length} / {getPlanQuotas().articles === 99999 ? '∞' : getPlanQuotas().articles}
+                                </h3>
+                                <ProgressBar 
+                                  now={getPlanQuotas().articles === 99999 ? 100 : (myArticles.length / getPlanQuotas().articles) * 100} 
+                                  variant="primary" 
+                                  className="rounded-pill"
+                                  style={{ height: '8px' }}
+                                />
+                                <small className="text-muted mt-2 d-block">
+                                  {getPlanQuotas().articles === 99999 ? 'Unlimited publishing active.' : `${getPlanQuotas().articles - myArticles.length} articles remaining this month.`}
+                                </small>
+                              </Card>
+                            </Col>
+
+                            {getPlanQuotas().ads > 0 && (
+                              <Col md={6}>
+                                <Card className="border p-3 rounded-4 shadow-sm h-100 bg-white">
+                                  <div className="d-flex align-items-center justify-content-between mb-2">
+                                    <span className="fw-bold text-muted small">BANNER ADS CAMPAIGNS</span>
+                                    <i className="bi bi-image text-success fs-5"></i>
+                                  </div>
+                                  <h3 className="fw-black text-dark mb-2">
+                                    {corpAds.filter(ad => ad.advertiser === (userInfo.companyName || userInfo.name)).length} / {getPlanQuotas().ads}
+                                  </h3>
+                                  <ProgressBar 
+                                    now={(corpAds.filter(ad => ad.advertiser === (userInfo.companyName || userInfo.name)).length / getPlanQuotas().ads) * 100} 
+                                    variant="success" 
+                                    className="rounded-pill"
+                                    style={{ height: '8px' }}
+                                  />
+                                  <small className="text-muted mt-2 d-block">
+                                    {getPlanQuotas().ads - corpAds.filter(ad => ad.advertiser === (userInfo.companyName || userInfo.name)).length} active banner slots available.
+                                  </small>
+                                </Card>
+                              </Col>
+                            )}
+                          </Row>
+
+                          {/* Published List */}
+                          <div className="bg-white border rounded-4 p-4 shadow-sm">
+                            <h5 className="fw-bold text-dark mb-3">Recent Corporate Publications</h5>
+                            {myArticles.length === 0 ? (
+                              <p className="text-muted small mb-0">No published articles yet. Navigate to "Post Articles" to launch your first brand statement.</p>
+                            ) : (
+                              <div className="table-responsive">
+                                <table className="table table-hover align-middle mb-0">
+                                  <thead>
+                                    <tr>
+                                      <th>Article Title</th>
+                                      <th>Category</th>
+                                      <th>Published Date</th>
+                                      <th>Metrics</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {myArticles.map(art => (
+                                      <tr key={art.id}>
+                                        <td className="fw-bold text-dark">{art.title}</td>
+                                        <td><Badge bg="secondary">{art.category}</Badge></td>
+                                        <td>{new Date(art.createdAt).toLocaleDateString()}</td>
+                                        <td><strong>{art.views || 0}</strong> impressions</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* --- TAB 2: POST / PUBLISH ARTICLES TOOL --- */}
+                      {corpTab === 'article' && (
+                        <Card className="border rounded-4 p-4 bg-white shadow-sm">
+                          <h5 className="fw-bold text-dark mb-4">
+                            <i className="bi bi-pencil-square me-2 text-primary"></i>
+                            Draft Corporate Press Release or Article
+                          </h5>
+
+                          {corpPublishMsg.text && (
+                            <div className={`alert alert-${corpPublishMsg.type} rounded-3 small`}>
+                              {corpPublishMsg.text}
+                            </div>
+                          )}
+
+                          <form onSubmit={handleCorpPublish}>
+                            <div className="mb-3">
+                              <label className="fw-bold small text-muted mb-1">Headline *</label>
+                              <input 
+                                type="text"
+                                className="form-control rounded-3"
+                                placeholder="Enter corporate announcement or PR headline..."
+                                value={corpArticleForm.title}
+                                onChange={e => setCorpArticleForm({ ...corpArticleForm, title: e.target.value })}
+                                required
+                              />
+                            </div>
+
+                            <Row className="mb-3">
+                              <Col md={6}>
+                                <label className="fw-bold small text-muted mb-1">Target Category *</label>
+                                <select 
+                                  className="form-select rounded-3"
+                                  value={corpArticleForm.category}
+                                  onChange={e => setCorpArticleForm({ ...corpArticleForm, category: e.target.value })}
+                                  required
+                                >
+                                  {['Articles', 'Manufacturing', 'Automation', 'Acquisitions', 'Startups', 'Events'].map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                  ))}
+                                </select>
+                              </Col>
+                              <Col md={6}>
+                                <label className="fw-bold small text-muted mb-1">Featured Branding Thumbnail</label>
+                                <input 
+                                  type="file"
+                                  id="corp-article-image"
+                                  accept="image/*"
+                                  className="form-control rounded-3"
+                                  onChange={e => setCorpArticleForm({ ...corpArticleForm, image: e.target.files[0] || null })}
+                                />
+                              </Col>
+                            </Row>
+
+                            <div className="mb-4">
+                              <label className="fw-bold small text-muted mb-1">Article Body Content *</label>
+                              <textarea 
+                                className="form-control rounded-3"
+                                rows={8}
+                                placeholder="Paste or draft your premium press release body..."
+                                value={corpArticleForm.content}
+                                onChange={e => setCorpArticleForm({ ...corpArticleForm, content: e.target.value })}
+                                required
+                                style={{ lineHeight: 1.7 }}
+                              />
+                            </div>
+
+                            <Button 
+                              type="submit" 
+                              variant="primary" 
+                              className="fw-bold px-4 rounded-pill"
+                              disabled={corpPublishing}
+                            >
+                              {corpPublishing ? 'Submitting PR...' : 'Publish Corporate PR'}
+                            </Button>
+                          </form>
+                        </Card>
+                      )}
+
+                      {/* --- TAB 3: SPONSORED ADS CAMPAIGN MANAGER --- */}
+                      {corpTab === 'ads' && getPlanQuotas().ads > 0 && (
+                        <Card className="border rounded-4 p-4 bg-white shadow-sm">
+                          <h5 className="fw-bold text-dark mb-4">
+                            <i className="bi bi-image me-2 text-primary"></i>
+                            Launch Sponsored Advertisement Banner
+                          </h5>
+
+                          {corpAdMsg.text && (
+                            <div className={`alert alert-${corpAdMsg.type} rounded-3 small`}>
+                              {corpAdMsg.text}
+                            </div>
+                          )}
+
+                          <form onSubmit={handleCorpAdUpload}>
+                            <Row className="mb-3">
+                              <Col md={6}>
+                                <label className="fw-bold small text-muted mb-1">Placement Placement Slot</label>
+                                <select 
+                                  className="form-select rounded-3"
+                                  value={corpAdForm.slot}
+                                  onChange={e => setCorpAdForm({ ...corpAdForm, slot: e.target.value })}
+                                  required
+                                >
+                                  <option value="leaderboard">Leaderboard Banner (728 x 90) - Homepage Top</option>
+                                  <option value="right-half-page">Half Page Ad (300 x 600) - Sidebar Right</option>
+                                </select>
+                              </Col>
+                              <Col md={6}>
+                                <label className="fw-bold small text-muted mb-1">Click Redirect URL</label>
+                                <input 
+                                  type="url"
+                                  className="form-control rounded-3"
+                                  placeholder="https://yourcompany.com/landing-page"
+                                  value={corpAdForm.link}
+                                  onChange={e => setCorpAdForm({ ...corpAdForm, link: e.target.value })}
+                                />
+                              </Col>
+                            </Row>
+
+                            <div className="mb-4">
+                              <label className="fw-bold small text-muted mb-1">Banner Graphic Image *</label>
+                              <input 
+                                type="file"
+                                id="corp-ad-image"
+                                accept="image/*"
+                                className="form-control rounded-3"
+                                onChange={e => setCorpAdForm({ ...corpAdForm, imageFile: e.target.files[0] || null })}
+                                required
+                              />
+                              <small className="text-muted mt-1 d-block">
+                                JPEG or PNG recommended. Ensure it fits exactly the selected banner size.
+                              </small>
+                            </div>
+
+                            <Button 
+                              type="submit" 
+                              variant="success" 
+                              className="fw-bold px-4 rounded-pill"
+                              disabled={corpAdUploading}
+                            >
+                              {corpAdUploading ? 'Uploading Graphic...' : 'Launch Sponsored Ad'}
+                            </Button>
+                          </form>
+
+                          {/* Existing Ads List */}
+                          <div className="mt-4 border-top pt-4">
+                            <h6 className="fw-bold text-dark mb-3">Your Active Banner Slots</h6>
+                            {corpAds.filter(ad => ad.advertiser === (userInfo.companyName || userInfo.name)).length === 0 ? (
+                              <p className="text-muted small mb-0">No active banner ads launched yet.</p>
+                            ) : (
+                              <div className="d-flex flex-column gap-3">
+                                {corpAds.filter(ad => ad.advertiser === (userInfo.companyName || userInfo.name)).map(ad => (
+                                  <div key={ad.id} className="d-flex align-items-center justify-content-between p-3 border rounded-3 bg-light">
+                                    <div className="d-flex align-items-center gap-3">
+                                      <img src={`${API_BASE}${ad.imageUrl}`} alt="" style={{ height: '40px', width: '80px', objectFit: 'cover', borderRadius: '4px' }} />
+                                      <div>
+                                        <p className="mb-0 fw-bold text-dark text-capitalize">{ad.slot.replace('-', ' ')} Slot</p>
+                                        <small className="text-muted">{ad.clicks || 0} clicks • {ad.impressions || 0} views</small>
+                                      </div>
+                                    </div>
+                                    <Badge bg="success">LIVE</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      )}
+
+                      {/* --- TAB 4: CAMPAIGNS & REQUEST DESK --- */}
+                      {corpTab === 'requests' && (
+                        <Card className="border rounded-4 p-4 bg-white shadow-sm">
+                          <h5 className="fw-bold text-dark mb-2">
+                            <i className="bi bi-mailbox me-2 text-primary"></i>
+                            Strategic Campaign Desk
+                          </h5>
+                          <p className="text-muted small mb-4">
+                            Submit a request to execute premium brand promotion deliverables included in your partnership.
+                          </p>
+
+                          {reqStatus.text && (
+                            <div className="alert alert-success rounded-3 small animate-fade-in">
+                              <i className="bi bi-info-circle-fill me-2"></i>
+                              {reqStatus.text}
+                            </div>
+                          )}
+
+                          <Row className="g-3">
+                            <Col sm={6}>
+                              <div className="p-3 border rounded-3 bg-light d-flex justify-content-between align-items-center">
+                                <div>
+                                  <h6 className="fw-bold text-dark mb-1">Newsletter Placement</h6>
+                                  <p className="text-muted x-small mb-0">Deliver brand to 50K subscribers</p>
+                                </div>
+                                <Button size="sm" variant="outline-primary" className="fw-bold rounded-pill px-3" onClick={() => handleCampaignReq('Newsletter Placement')}>
+                                  Request
+                                </Button>
+                              </div>
+                            </Col>
+
+                            <Col sm={6}>
+                              <div className="p-3 border rounded-3 bg-light d-flex justify-content-between align-items-center">
+                                <div>
+                                  <h6 className="fw-bold text-dark mb-1">Social Media Shoutout</h6>
+                                  <p className="text-muted x-small mb-0">Featured across our social feeds</p>
+                                </div>
+                                <Button size="sm" variant="outline-primary" className="fw-bold rounded-pill px-3" onClick={() => handleCampaignReq('Social Media Shoutout')}>
+                                  Request
+                                </Button>
+                              </div>
+                            </Col>
+
+                            {/* Pro Only Deliverables */}
+                            {userInfo.membershipPlan === 'pro' && (
+                              <>
+                                <Col sm={6}>
+                                  <div className="p-3 border rounded-3 bg-light d-flex justify-content-between align-items-center">
+                                    <div>
+                                      <h6 className="fw-bold text-dark mb-1">Homepage Takeover</h6>
+                                      <p className="text-muted x-small mb-0">Exclusive display ad blocks</p>
+                                    </div>
+                                    <Button size="sm" variant="outline-primary" className="fw-bold rounded-pill px-3" onClick={() => handleCampaignReq('Homepage Takeover')}>
+                                      Request
+                                    </Button>
+                                  </div>
+                                </Col>
+                                <Col sm={6}>
+                                  <div className="p-3 border rounded-3 bg-light d-flex justify-content-between align-items-center">
+                                    <div>
+                                      <h6 className="fw-bold text-dark mb-1">Digital E-paper Feature</h6>
+                                      <p className="text-muted x-small mb-0">Full feature interview feature</p>
+                                    </div>
+                                    <Button size="sm" variant="outline-primary" className="fw-bold rounded-pill px-3" onClick={() => handleCampaignReq('Digital E-Paper Feature')}>
+                                      Request
+                                    </Button>
+                                  </div>
+                                </Col>
+                              </>
+                            )}
+
+                            {/* Direct Line to Account Manager */}
+                            <Col xs={12} className="mt-4">
+                              <div className="p-4 rounded-4 text-white" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                  <div className="d-flex align-items-center gap-3">
+                                    <div className="bg-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: '48px', height: '48px' }}>
+                                      <i className="bi bi-headset text-white fs-4"></i>
+                                    </div>
+                                    <div>
+                                      <h6 className="fw-bold mb-0">Dedicated Account Manager</h6>
+                                      <p className="text-white-50 x-small mb-0">Need custom solutions? Get direct assistance now.</p>
+                                    </div>
+                                  </div>
+                                  <Button variant="primary" className="fw-bold rounded-pill px-4" onClick={() => handleCampaignReq('Account Manager Consultation')}>
+                                    <i className="bi bi-chat-dots-fill me-1"></i> Call Support Line
+                                  </Button>
+                                </div>
+                              </div>
+                            </Col>
+                          </Row>
+                        </Card>
+                      )}
+                    </div>
+                  )}
+
+                  {/* === CORPORATE: Unpaid Signup CTA === */}
                   {role === 'corporate' && !userInfo.membershipPlan && userInfo.selectedPlan && (
                     <div className="mt-4 p-4 rounded-4" style={{ background: 'linear-gradient(135deg, #faf5ff, #ede9fe)', border: '2px solid #e9d5ff' }}>
                       <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
@@ -331,11 +891,11 @@ const UserProfile = () => {
                             Activate Your {planLabels[userInfo.selectedPlan]} Plan
                           </h5>
                           <p className="text-muted mb-0 small">
-                            Your corporate account is approved! Complete your membership purchase to unlock all features.
+                            Complete your subscription payment to unlock premium publishing features, ad slots, and campaign assets.
                           </p>
                         </div>
                         <Button 
-                          onClick={() => setShowPayment(true)}
+                          onClick={() => navigate(`/corporate/payment?plan=${userInfo.selectedPlan}`)}
                           style={{ background: '#7c3aed', border: 'none', fontWeight: 800, padding: '12px 30px', borderRadius: '12px' }}
                           className="shadow-sm"
                         >
@@ -382,13 +942,9 @@ const UserProfile = () => {
                     <Button variant="outline-danger" className="fw-bold px-4 rounded-pill">
                       <i className="bi bi-pencil me-2"></i>Edit Profile
                     </Button>
-                    {role !== 'corporate' && (
-                      <Button variant="danger" className="fw-bold px-4 rounded-pill" onClick={() => navigate('/upgrade')}>
-                        <i className="bi bi-rocket-takeoff me-2"></i>Upgrade Membership
-                      </Button>
-                    )}
+
                     {role === 'corporate' && !userInfo.membershipPlan && userInfo.selectedPlan && (
-                      <Button style={{ background: '#7c3aed', border: 'none' }} className="fw-bold px-4 rounded-pill" onClick={() => setShowPayment(true)}>
+                      <Button style={{ background: '#7c3aed', border: 'none' }} className="fw-bold px-4 rounded-pill" onClick={() => navigate(`/corporate/payment?plan=${userInfo.selectedPlan}`)}>
                         <i className="bi bi-credit-card me-2"></i>Activate Plan
                       </Button>
                     )}

@@ -61,7 +61,7 @@ router.get('/all', protect, authorize('superadmin'), async (req, res) => {
 /* ─────────────────────────────────────────────────────────────────
    POST /api/ads   (Admin only — create or update)
 ───────────────────────────────────────────────────────────────── */
-router.post('/', protect, authorize('superadmin'), async (req, res) => {
+router.post('/', protect, authorize('superadmin', 'corporate'), async (req, res) => {
   const { id, slot, imageUrl, link, label, advertiser, category, startDate, endDate, active } = req.body;
 
   // Auto-set dimensions based on slot

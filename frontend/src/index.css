@@ -145,6 +145,21 @@ body {
   background: var(--industrial-red);
 }
 
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border: none;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
 /* Smooth Focus States */
 *:focus-visible {
   outline: 2px solid var(--industrial-red);
@@ -170,9 +185,44 @@ body {
   -webkit-touch-callout: none;
 }
 
+/* Re-enable selection & interaction inside modals and form controls */
+.modal,
+.modal *,
+.modal input,
+.modal textarea,
+.modal select,
+.modal button,
+.modal a,
+input,
+textarea,
+select,
+button {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+  pointer-events: auto !important;
+}
+
+/* Buttons don't need text selection, just pointer events */
+button,
+.btn,
+.modal button,
+.modal .btn {
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: auto !important;
+  cursor: pointer;
+}
+
 img {
   pointer-events: none;
   -webkit-user-drag: none;
+}
+
+/* But images inside modals should still allow right-click protection only */
+.modal img {
+  pointer-events: auto;
 }
 
 .x-small {
@@ -2258,7 +2308,7 @@ img {
 }
 
 /* Podcast & Membership Modals */
-.podcast-modal, .membership-modal {
+.podcast-modal, .membership-modal, .premium-modal {
   z-index: 10001 !important;
 }
 .modal-backdrop {

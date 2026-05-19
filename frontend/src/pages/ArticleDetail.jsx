@@ -223,8 +223,9 @@ const ArticleDetail = () => {
   const articleDescription = article.excerpt || (article.content ? article.content.substring(0, 160) : 'Industrial Times News');
 
   return (
-    <Container fluid="xl" className="py-4 reveal">
-      <Helmet>
+    <>
+      <Container fluid="xl" className="py-4 reveal">
+        <Helmet>
         <title>{article.title} | Industrial Times</title>
         <meta name="description" content={articleDescription} />
         <meta property="og:title" content={article.title} />
@@ -262,8 +263,18 @@ const ArticleDetail = () => {
               <i className="bi bi-person-fill fs-5"></i>
             </div>
             <div>
-              <div className="fw-black small text-uppercase">Industrial Times Editorial Team</div>
-              <div className="x-small text-muted fw-bold mt-1">PUBLISHED: {article.date || 'Today'} • 5 MIN READ</div>
+              <div className="fw-black small text-uppercase">
+                {article.author ? (
+                  <Link to={`/profile/${article.author}`} className="text-dark hover-text-red text-decoration-none">
+                    {article.author}
+                  </Link>
+                ) : (
+                  <span className="text-dark">Industrial Times Editorial Team</span>
+                )}
+              </div>
+              <div className="x-small text-muted fw-bold mt-1">
+                PUBLISHED: {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today'} • 5 MIN READ
+              </div>
             </div>
             <div className="ms-auto d-flex flex-wrap gap-2 align-items-center">
                <button 
@@ -271,6 +282,13 @@ const ArticleDetail = () => {
                  onClick={() => setShowCommentsModal(true)}
                >
                  <i className="bi bi-chat-left-text me-2"></i> Comment
+               </button>
+
+               <button 
+                 className={`btn ${hasLiked ? 'btn-danger' : 'btn-outline-danger'} rounded-pill px-3 fw-bold shadow-sm btn-sm hover-lift`}
+                 onClick={handleLike}
+               >
+                 <i className={`bi ${hasLiked ? 'bi-heart-fill' : 'bi-heart'} me-2`}></i> {hasLiked ? 'Liked' : 'Like'} ({likes})
                </button>
 
                <button 
@@ -291,32 +309,7 @@ const ArticleDetail = () => {
             </div>
           </div>
 
-          <Modal show={showShareModal} onHide={() => setShowShareModal(false)} centered contentClassName="border-0 shadow-lg rounded-4">
-            <Modal.Header closeButton className="border-0 pb-0">
-              <Modal.Title className="fw-black text-uppercase small" style={{ letterSpacing: '1px' }}>Share this Story</Modal.Title>
-            </Modal.Header>
-            <Modal.Body className="p-4 pt-2">
-              <div className="text-center mb-4">
-                {article.image ? (
-                   <img src={article.image} alt={article.title} className="rounded-3 shadow-sm mb-3 w-100" style={{ maxHeight: '150px', objectFit: 'cover' }} />
-                ) : (
-                   <div className="bg-light rounded-3 mb-3 w-100 d-flex align-items-center justify-content-center" style={{ height: '150px' }}>
-                      <i className="bi bi-image fs-1 text-muted opacity-25"></i>
-                   </div>
-                )}
-                <h6 className="fw-bold px-3">{article.title}</h6>
-              </div>
-              <Row className="g-3">
-                <Col xs={6}><button onClick={() => handleShare('whatsapp')} className="btn btn-light w-100 py-3 rounded-4 border-0 d-flex flex-column align-items-center gap-2 hover-lift transition-all shadow-sm"><i className="bi bi-whatsapp text-success fs-3"></i><span className="x-small fw-bold">WhatsApp</span></button></Col>
-                <Col xs={6}><button onClick={() => handleShare('facebook')} className="btn btn-light w-100 py-3 rounded-4 border-0 d-flex flex-column align-items-center gap-2 hover-lift transition-all shadow-sm"><i className="bi bi-facebook text-primary fs-3"></i><span className="x-small fw-bold">Facebook</span></button></Col>
-                <Col xs={6}><button onClick={() => handleShare('twitter')} className="btn btn-light w-100 py-3 rounded-4 border-0 d-flex flex-column align-items-center gap-2 hover-lift transition-all shadow-sm"><i className="bi bi-twitter-x text-dark fs-3"></i><span className="x-small fw-bold">Twitter</span></button></Col>
-                <Col xs={6}><button onClick={() => handleShare('copy')} className="btn btn-light w-100 py-3 rounded-4 border-0 d-flex flex-column align-items-center gap-2 hover-lift transition-all shadow-sm"><i className="bi bi-link-45deg text-muted fs-3"></i><span className="x-small fw-bold">Copy Link</span></button></Col>
-                {navigator.share && (
-                  <Col xs={12}><button onClick={() => handleShare('native')} className="btn btn-danger w-100 py-3 rounded-4 border-0 d-flex align-items-center justify-content-center gap-2 hover-lift transition-all shadow-sm"><i className="bi bi-share fs-4"></i><span className="fw-bold">More Options</span></button></Col>
-                )}
-              </Row>
-            </Modal.Body>
-          </Modal>
+          {/* Share Modal Moved outside Container */}
 
           <div className="article-content">
             <div className="img-zoom-container mb-5 rounded-4 shadow-sm overflow-hidden bg-black" style={{ minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -387,81 +380,7 @@ const ArticleDetail = () => {
                 </ul>
               </div>
 
-              {/* Comments Modal */}
-              <Modal 
-                show={showCommentsModal} 
-                onHide={() => setShowCommentsModal(false)} 
-                size="lg" 
-                centered 
-                contentClassName="border-0 shadow-lg rounded-4 overflow-hidden"
-              >
-                <Modal.Header closeButton className="border-bottom bg-light py-3 px-4">
-                  <Modal.Title className="fw-black text-uppercase small" style={{ letterSpacing: '1px' }}>
-                    Reader Discussions ({comments.length})
-                  </Modal.Title>
-                </Modal.Header>
-                <Modal.Body className="p-0">
-                  <div className="comments-modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                    <div className="p-4">
-                      <Form onSubmit={handlePostComment} className="mb-5 bg-white border p-4 rounded-4 shadow-sm">
-                        <h6 className="fw-bold mb-3">Join the discussion</h6>
-                        <Row className="g-3">
-                          <Col md={12}>
-                            <Form.Control 
-                              type="text" 
-                              placeholder="Your Name" 
-                              className="rounded-3 border-light bg-light py-2"
-                              value={newComment.userName}
-                              onChange={(e) => setNewComment({ ...newComment, userName: e.target.value })}
-                              required
-                            />
-                          </Col>
-                          <Col md={12}>
-                            <Form.Control 
-                              as="textarea" 
-                              rows={3} 
-                              placeholder="Share your thoughts..." 
-                              className="rounded-3 border-light bg-light py-2"
-                              value={newComment.content}
-                              onChange={(e) => setNewComment({ ...newComment, content: e.target.value })}
-                              required
-                            />
-                          </Col>
-                          <Col md={12}>
-                            <Button variant="danger" type="submit" className="rounded-pill px-4 fw-bold shadow-sm w-100 py-2" disabled={postingComment}>
-                              {postingComment ? 'POSTING...' : 'POST COMMENT'}
-                            </Button>
-                          </Col>
-                        </Row>
-                      </Form>
-
-                      <div className="comments-list">
-                        {comments.length > 0 ? (
-                          comments.map(comment => (
-                            <div key={comment.id} className="comment-item mb-4 pb-4 border-bottom last-border-0">
-                              <div className="d-flex align-items-center gap-3 mb-2">
-                                <div className="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: '40px', height: '40px' }}>
-                                  {comment.userName.charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                  <div className="fw-bold small">{comment.userName}</div>
-                                  <div className="x-small text-muted">{new Date(comment.createdAt).toLocaleDateString()}</div>
-                                </div>
-                              </div>
-                              <p className="mb-0 text-muted" style={{ fontSize: '0.95rem', lineHeight: '1.6' }}>{comment.content}</p>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-5 text-muted border border-dashed rounded-4">
-                            <i className="bi bi-chat-dots display-6 mb-3 d-block opacity-25"></i>
-                            No comments yet. Be the first to share your thoughts!
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </Modal.Body>
-              </Modal>
+              {/* Comments Modal Moved outside Container */}
             </div>
 
             <div className="mt-5 pt-5 border-top d-flex flex-wrap gap-2">
@@ -501,6 +420,111 @@ const ArticleDetail = () => {
         </Col>
       </Row>
     </Container>
+
+      <Modal show={showShareModal} onHide={() => setShowShareModal(false)} centered contentClassName="border-0 shadow-lg rounded-4" className="premium-modal">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-black text-uppercase small" style={{ letterSpacing: '1px' }}>Share this Story</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4 pt-2">
+          <div className="text-center mb-4">
+            {article.image ? (
+               <img src={article.image} alt={article.title} className="rounded-3 shadow-sm mb-3 w-100" style={{ maxHeight: '150px', objectFit: 'cover' }} />
+            ) : (
+               <div className="bg-light rounded-3 mb-3 w-100 d-flex align-items-center justify-content-center" style={{ height: '150px' }}>
+                  <i className="bi bi-image fs-1 text-muted opacity-25"></i>
+               </div>
+            )}
+            <h6 className="fw-bold px-3">{article.title}</h6>
+          </div>
+          <Row className="g-3">
+            <Col xs={6}><button onClick={() => handleShare('whatsapp')} className="btn btn-light w-100 py-3 rounded-4 border-0 d-flex flex-column align-items-center gap-2 hover-lift transition-all shadow-sm"><i className="bi bi-whatsapp text-success fs-3"></i><span className="x-small fw-bold">WhatsApp</span></button></Col>
+            <Col xs={6}><button onClick={() => handleShare('facebook')} className="btn btn-light w-100 py-3 rounded-4 border-0 d-flex flex-column align-items-center gap-2 hover-lift transition-all shadow-sm"><i className="bi bi-facebook text-primary fs-3"></i><span className="x-small fw-bold">Facebook</span></button></Col>
+            <Col xs={6}><button onClick={() => handleShare('twitter')} className="btn btn-light w-100 py-3 rounded-4 border-0 d-flex flex-column align-items-center gap-2 hover-lift transition-all shadow-sm"><i className="bi bi-twitter-x text-dark fs-3"></i><span className="x-small fw-bold">Twitter</span></button></Col>
+            <Col xs={6}><button onClick={() => handleShare('copy')} className="btn btn-light w-100 py-3 rounded-4 border-0 d-flex flex-column align-items-center gap-2 hover-lift transition-all shadow-sm"><i className="bi bi-link-45deg text-muted fs-3"></i><span className="x-small fw-bold">Copy Link</span></button></Col>
+            {navigator.share && (
+              <Col xs={12}><button onClick={() => handleShare('native')} className="btn btn-danger w-100 py-3 rounded-4 border-0 d-flex align-items-center justify-content-center gap-2 hover-lift transition-all shadow-sm"><i className="bi bi-share fs-4"></i><span className="fw-bold">More Options</span></button></Col>
+            )}
+          </Row>
+        </Modal.Body>
+      </Modal>
+
+      <Modal 
+        show={showCommentsModal} 
+        onHide={() => setShowCommentsModal(false)} 
+        size="lg" 
+        centered 
+        contentClassName="border-0 shadow-lg rounded-4 overflow-hidden"
+        className="premium-modal"
+      >
+        <Modal.Header closeButton className="border-bottom bg-light py-3 px-4">
+          <Modal.Title className="fw-black text-uppercase small" style={{ letterSpacing: '1px' }}>
+            Reader Discussions ({comments.length})
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-0">
+          <div className="comments-modal-body custom-scrollbar" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+            <div className="p-4">
+              <Form onSubmit={handlePostComment} className="mb-5 bg-white border p-4 rounded-4 shadow-sm">
+                <h6 className="fw-bold mb-3">Join the discussion</h6>
+                <Row className="g-3">
+                  <Col md={12}>
+                    <Form.Control 
+                      type="text" 
+                      placeholder="Your Name" 
+                      className="rounded-3 border-light bg-light py-2"
+                      value={newComment.userName}
+                      onChange={(e) => setNewComment({ ...newComment, userName: e.target.value })}
+                      required
+                    />
+                  </Col>
+                  <Col md={12}>
+                    <Form.Control 
+                      as="textarea" 
+                      rows={3} 
+                      placeholder="Share your thoughts..." 
+                      className="rounded-3 border-light bg-light py-2"
+                      value={newComment.content}
+                      onChange={(e) => setNewComment({ ...newComment, content: e.target.value })}
+                      required
+                    />
+                  </Col>
+                  <Col md={12}>
+                    <Button variant="danger" type="submit" className="rounded-pill px-4 fw-bold shadow-sm w-100 py-2" disabled={postingComment}>
+                      {postingComment ? 'POSTING...' : 'POST COMMENT'}
+                    </Button>
+                  </Col>
+                </Row>
+              </Form>
+
+              <div className="comments-list">
+                {comments.length > 0 ? (
+                  comments.map(comment => (
+                    <div key={comment.id} className="comment-item mb-4 pb-4 border-bottom last-border-0">
+                      <div className="d-flex align-items-center gap-3 mb-2">
+                        <div className="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: '40px', height: '40px' }}>
+                          {comment.userName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="fw-bold small">{comment.userName}</div>
+                          <div className="x-small text-muted">{new Date(comment.createdAt).toLocaleDateString()}</div>
+                        </div>
+                      </div>
+                      <p className="mb-0 text-muted" style={{ fontSize: '0.95rem', lineHeight: '1.6' }}>{comment.content}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-5 text-muted border border-dashed rounded-4">
+                    <i className="bi bi-chat-dots display-6 mb-3 d-block opacity-25"></i>
+                    No comments yet. Be the first to share your thoughts!
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </Modal.Body>
+      </Modal>
+
+    </>
   );
 };
 

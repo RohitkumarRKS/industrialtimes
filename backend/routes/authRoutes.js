@@ -21,7 +21,7 @@ router.post('/signup', async (req, res) => {
 
     const isCorporate = role === 'corporate';
     const isReporter = role === 'author';
-    const needsApproval = isCorporate || isReporter;
+    const needsApproval = isReporter; // Only reporters require manual admin approval. Corporates are auto-approved to allow instant payment.
 
     const user = await User.create({
       name,
@@ -56,8 +56,13 @@ router.post('/signup', async (req, res) => {
           email: user.email,
           role: user.role,
           status: user.status,
-          token: null,
-          message: 'Corporate account registered successfully. Your account is pending administrative approval. You will be notified once approved.'
+          companyName: user.companyName,
+          designation: user.designation,
+          phone: user.phone,
+          selectedPlan: user.selectedPlan,
+          membershipPlan: user.membershipPlan,
+          token: generateToken(user.id),
+          message: 'Corporate account registered successfully! Redirecting to secure billing...'
         });
       } else {
         // Reader - instant access

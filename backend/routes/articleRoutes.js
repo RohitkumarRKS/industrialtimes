@@ -60,10 +60,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// @desc    Create an article (Admin/Author only)
-// @route   POST /api/articles
-router.post('/', protect, authorize('superadmin', 'author'), async (req, res) => {
-  const { title, content, image, video, videoUrl, category, trending, state, city, highlights } = req.body;
+router.post('/', protect, authorize('superadmin', 'author', 'corporate'), async (req, res) => {
+  const { title, content, image, video, videoUrl, category, trending, state, city, highlights, author } = req.body;
 
   try {
     const articleData = {
@@ -76,11 +74,19 @@ router.post('/', protect, authorize('superadmin', 'author'), async (req, res) =>
       trending,
       state,
       city,
+      author,
       highlights: highlights ? JSON.stringify(highlights) : null
     };
 
     if (req.user && req.user.id > 0) {
       articleData.authorId = req.user.id;
+      if (!articleData.author) {
+        const User = require('../models/User');
+        const user = await User.findByPk(req.user.id);
+        if (user) {
+          articleData.author = user.name;
+        }
+      }
     }
 
     const article = await Article.create(articleData);
