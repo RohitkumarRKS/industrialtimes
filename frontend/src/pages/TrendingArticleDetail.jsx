@@ -31,10 +31,12 @@ const TrendingArticleDetail = () => {
     <Container fluid="xl" className="py-4 reveal">
 
 
-      <Row className="g-4">
+      <Row className="g-4 position-relative">
         <Col xl={2} lg={2} className="d-none d-lg-block">
-          <div className="sticky-top" style={{ top: '80px' }}>
-            <Advertisement slot="left-skyscraper" />
+          <div className="sticky-top" style={{ top: '100px', zIndex: 10, transform: 'translateX(-20px)' }}>
+            <div className="d-flex justify-content-start">
+              <Advertisement slot="left-skyscraper" className="ms-0" />
+            </div>
           </div>
         </Col>
 
@@ -111,8 +113,12 @@ const TrendingArticleDetail = () => {
         </Col>
 
         <Col xl={3} lg={3} className="d-none d-lg-block">
-          <div className="sticky-top" style={{ top: '80px' }}>
-             <Advertisement slot="right-half-page" />
+          <div className="sticky-top" style={{ top: '100px', zIndex: 10 }}>
+            <div className="sidebar-ad text-end" style={{ transform: 'translateX(10px)' }}>
+               <div className="d-flex justify-content-end">
+                  <Advertisement slot="right-half-page" />
+               </div>
+            </div>
           </div>
         </Col>
       </Row>

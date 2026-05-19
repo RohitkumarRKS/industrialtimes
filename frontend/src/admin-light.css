@@ -592,7 +592,7 @@
 
 /* --- NEW DASHBOARD LAYOUT (REFERENCE IMAGE MATCH) --- */
 /* --- NEW DASHBOARD LAYOUT (REFERENCE IMAGE MATCH) --- */
-.new-admin-topbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: #FDFFFC; border-bottom: 1px solid #e2e8f0; }
+.new-admin-topbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: #adadad; border-bottom: 1px solid #e2e8f0; }
 .new-page-title { font-size: 1.5rem; font-weight: 800; color: #1e293b; margin: 0; }
 .new-topbar-right { display: flex; align-items: center; gap: 24px; }
 .new-search-box { display: flex; align-items: center; background: #f1f5f9; padding: 10px 16px; border-radius: 8px; border: 1px solid #e2e8f0; width: 300px; gap: 10px; }

@@ -237,10 +237,12 @@ const ArticleDetail = () => {
 
 
 
-      <Row className="g-4">
+      <Row className="g-4 position-relative">
         <Col xl={2} lg={2} className="d-none d-lg-block">
-          <div className="sticky-top" style={{ top: '80px' }}>
-            <Advertisement slot="left-skyscraper" />
+          <div className="sticky-top" style={{ top: '100px', zIndex: 10, transform: 'translateX(-20px)' }}>
+            <div className="d-flex justify-content-start">
+              <Advertisement slot="left-skyscraper" className="ms-0" />
+            </div>
           </div>
         </Col>
 
@@ -352,33 +354,29 @@ const ArticleDetail = () => {
             <div className="article-body-text" style={{ fontSize: '1.1rem', lineHeight: '1.8', color: '#374151' }}>
               {renderContentWithAds(article.content)}
               
-              <div className="bg-light p-4 rounded-4 my-5 border-start border-danger border-4 shadow-sm">
-                <h5 className="fw-black mb-3 text-uppercase small" style={{ letterSpacing: '1px' }}>Industry Highlights</h5>
-                <ul className="mb-0 small fw-medium text-dark">
-                  {(() => {
-                    try {
-                      const highlightList = article.highlights ? JSON.parse(article.highlights) : null;
-                      if (highlightList && Array.isArray(highlightList) && highlightList.length > 0) {
-                        return highlightList.map((h, i) => (
-                          <li key={i} className="mb-2 d-flex align-items-start gap-2">
-                            <i className="bi bi-check-circle-fill text-danger mt-1" style={{ fontSize: '0.8rem' }}></i>
-                            {h}
-                          </li>
-                        ));
-                      }
-                    } catch (e) {
-                      console.error("Highlights parse error", e);
-                    }
+              {(() => {
+                try {
+                  const highlightList = article.highlights ? JSON.parse(article.highlights) : null;
+                  if (highlightList && Array.isArray(highlightList) && highlightList.length > 0) {
                     return (
-                      <>
-                        <li className="mb-2">Strategic digital transformation is now a business imperative.</li>
-                        <li className="mb-2">Energy efficiency remains a top priority for global manufacturers.</li>
-                        <li className="mb-0">Supply chain transparency is being enhanced through AI solutions.</li>
-                      </>
+                      <div className="bg-light p-4 rounded-4 my-5 border-start border-danger border-4 shadow-sm">
+                        <h5 className="fw-black mb-3 text-uppercase small" style={{ letterSpacing: '1px' }}>Industry Highlights</h5>
+                        <ul className="mb-0 small fw-medium text-dark">
+                          {highlightList.map((h, i) => (
+                            <li key={i} className="mb-2 d-flex align-items-start gap-2">
+                              <i className="bi bi-check-circle-fill text-danger mt-1" style={{ fontSize: '0.8rem' }}></i>
+                              {h}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     );
-                  })()}
-                </ul>
-              </div>
+                  }
+                } catch (e) {
+                  console.error("Highlights parse error", e);
+                }
+                return null;
+              })()}
 
               {/* Comments Modal Moved outside Container */}
             </div>
@@ -393,7 +391,7 @@ const ArticleDetail = () => {
         </Col>
 
         <Col xl={3} lg={3} className="d-none d-lg-block">
-          <div className="sticky-top" style={{ top: '80px' }}>
+          <div>
             <h5 className="fw-black mb-4 d-flex align-items-center">
               <i className="bi bi-arrow-right-circle-fill text-danger me-2"></i> RELATED STORIES
             </h5>
@@ -410,8 +408,10 @@ const ArticleDetail = () => {
                 </div>
               ))}
             </div>
+          </div>
 
-            <div className="sidebar-ad text-end">
+          <div className="sticky-top" style={{ top: '100px', zIndex: 10 }}>
+            <div className="sidebar-ad text-end" style={{ transform: 'translateX(10px)' }}>
                <div className="d-flex justify-content-end">
                   <Advertisement slot="right-half-page" />
                </div>

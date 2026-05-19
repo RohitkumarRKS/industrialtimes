@@ -42,6 +42,11 @@ const PodcastGuest = sequelize.define('PodcastGuest', {
   status: {
     type: DataTypes.ENUM('pending', 'approved', 'rejected'),
     defaultValue: 'pending'
+  },
+  customData: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {}
   }
 });
 

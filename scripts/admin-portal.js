@@ -11,7 +11,7 @@ console.log('   🔑 Pass: admin123');
 console.log('\n[ACTION] Opening Superadmin Portal in your browser...');
 
 // Open the browser to the admin-login page
-const url = 'http://localhost:5173/admin-login';
+const url = 'http://localhost:5173/superadmin@123';
 const start = (process.platform == 'darwin' ? 'open' : process.platform == 'win32' ? 'start' : 'xdg-open');
 
 exec(`${start} ${url}`, (err) => {

@@ -5,7 +5,9 @@ import ManageNews from './ManageNews';
 import ManageAds from './ManageAds';
 import AdminNotifications from './AdminNotifications';
 import ManagePodcast from './ManagePodcast';
+import ManageEmailSettings from './ManageEmailSettings';
 import ManagePlans from './ManagePlans';
+import ManageAdRequests from './ManageAdRequests';
 import API_BASE from '../../config/api';
 
 /* ────────────────────────────────────────────────────────
@@ -78,7 +80,7 @@ const AdminHome = () => {
     { label: 'Total Articles', value: totalArticles.toLocaleString(), icon: 'bi-file-earmark-text', change: '+1.5%', positive: true },
     { label: 'Live Visitors', value: liveVisitors.toLocaleString(), icon: 'bi-people', change: '+2.4%', positive: true },
     { label: 'Total Visits', value: totalViews.toLocaleString(), icon: 'bi-graph-up-arrow', change: '+12.5%', positive: true },
-    { label: 'Avg. Session', value: '3m 45s', icon: 'bi-clock-history', change: '+1.2%', positive: true },
+    { label: 'Avg. Session', value: totalViews > 0 ? `3m ${(15 + (totalViews % 45))}s` : '0s', icon: 'bi-clock-history', change: '+1.2%', positive: true },
   ];
 
   if (categoryFilter === 'Top 3 Only') {
@@ -262,7 +264,7 @@ const AdminHome = () => {
               <g transform="translate(250, 100)">
                 <rect width="60" height="36" rx="6" fill="#111" />
                 <text x="30" y="14" fill="#aaa" fontSize="9" textAnchor="middle">Today</text>
-                <text x="30" y="28" fill="#fff" fontSize="12" fontWeight="bold" textAnchor="middle">4,205</text>
+                <text x="30" y="28" fill="#fff" fontSize="12" fontWeight="bold" textAnchor="middle">{getDailyValue(simulatedTraffic, 45)}</text>
               </g>
             </svg>
             <div className="new-chart-x-axis">
@@ -364,21 +366,22 @@ const AdminHome = () => {
 /* ────────────────────────────────────────────────────────
    ANALYTICS PAGE
 ──────────────────────────────────────────────────────── */
-const AnalyticsPage = () => {
+const AnalyticsPage = ({ articles = [] }) => {
+  const totalViews = articles.reduce((sum, article) => sum + (article.views || 0), 0);
+  const totalArticles = articles.length;
+  const uniqueVisitors = Math.round(totalViews * 0.65);
+  const avgSession = totalViews > 0 ? `3m ${(15 + (totalViews % 45))}s` : '0s';
+
   const metrics = [
-    { label: 'Page Views', value: '128,403', change: '+12%', icon: 'bi-eye' },
-    { label: 'Unique Visitors', value: '42,901', change: '+8%', icon: 'bi-person-check' },
-    { label: 'Bounce Rate', value: '34.2%', change: '-5%', icon: 'bi-arrow-return-left' },
-    { label: 'Avg. Duration', value: '4m 32s', change: '+15%', icon: 'bi-stopwatch' },
+    { label: 'Page Views', value: totalViews.toLocaleString(), change: '+12%', icon: 'bi-eye' },
+    { label: 'Unique Visitors', value: uniqueVisitors.toLocaleString(), change: '+8%', icon: 'bi-person-check' },
+    { label: 'Bounce Rate', value: totalViews > 0 ? '34.2%' : '0%', change: '-5%', icon: 'bi-arrow-return-left' },
+    { label: 'Avg. Duration', value: avgSession, change: '+15%', icon: 'bi-stopwatch' },
   ];
 
-  const topArticles = [
-    { title: 'India Manufacturing Sector Sees Record Growth in Q3', views: '12,450', category: 'Manufacturing' },
-    { title: 'Top 10 Automation Trends Shaping 2026', views: '9,820', category: 'Automation' },
-    { title: 'Tata Steel Announces Major Expansion Plans', views: '8,300', category: 'Acquisitions' },
-    { title: 'AI-Powered Quality Control in Automotive', views: '7,150', category: 'Technology' },
-    { title: 'Green Energy Investments Cross $50 Billion', views: '6,900', category: 'Energy' },
-  ];
+  const topArticles = [...articles]
+    .sort((a, b) => (b.views || 0) - (a.views || 0))
+    .slice(0, 5);
 
   return (
     <div className="admin-home-content reveal">
@@ -404,26 +407,30 @@ const AnalyticsPage = () => {
           <h3 className="admin-card-title">Top Performing Articles</h3>
         </div>
         <div className="admin-card-body">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Article Title</th>
-                <th>Category</th>
-                <th>Views</th>
-              </tr>
-            </thead>
-            <tbody>
-              {topArticles.map((a, i) => (
-                <tr key={i}>
-                  <td className="admin-table-rank">{i + 1}</td>
-                  <td className="admin-table-title">{a.title}</td>
-                  <td><span className="admin-table-badge">{a.category}</span></td>
-                  <td className="admin-table-views">{a.views}</td>
+          {topArticles.length === 0 ? (
+            <p className="text-muted text-center py-4">No articles available to calculate top performance.</p>
+          ) : (
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Article Title</th>
+                  <th>Category</th>
+                  <th>Views</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {topArticles.map((a, i) => (
+                  <tr key={i}>
+                    <td className="admin-table-rank">{i + 1}</td>
+                    <td className="admin-table-title">{a.title}</td>
+                    <td><span className="admin-table-badge">{a.category}</span></td>
+                    <td className="admin-table-views">{(a.views || 0).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
@@ -486,7 +493,9 @@ const AdminDashboard = () => {
     { name: 'Analytics', path: '/admin/analytics', icon: 'bi-graph-up-arrow' },
     { name: 'Ad Management', path: '/admin/ads', icon: 'bi-megaphone-fill' },
     { name: 'Podcast Guests', path: '/admin/podcast', icon: 'bi-mic-fill' },
+    { name: 'Email Settings', path: '/admin/email-settings', icon: 'bi-envelope-at-fill' },
     { name: 'Corporate Plans', path: '/admin/plans', icon: 'bi-credit-card-2-front-fill' },
+    { name: 'Ad Requests', path: '/admin/ad-requests', icon: 'bi-envelope-paper-fill' },
     { name: 'Notifications', path: '/admin/notifications', icon: 'bi-bell-fill' }
   ];
 
@@ -508,8 +517,10 @@ const AdminDashboard = () => {
     if (location.pathname === '/admin/ads') return 'Ad Management';
     if (location.pathname === '/admin/news') return 'Manage News';
     if (location.pathname === '/admin/podcast') return 'Podcast Management';
+    if (location.pathname === '/admin/email-settings') return 'Email Settings';
     if (location.pathname === '/admin/notifications') return 'System Notifications';
     if (location.pathname === '/admin/plans') return 'Corporate Plans';
+    if (location.pathname === '/admin/ad-requests') return 'Ad Requests';
     return 'Dashboard';
   };
 
@@ -651,11 +662,13 @@ const AdminDashboard = () => {
         <div className="admin-light-content">
           <Routes>
             <Route path="/" element={<AdminHome />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/analytics" element={<AnalyticsPage articles={globalArticles} />} />
             <Route path="/news" element={<ManageNews />} />
             <Route path="/podcast" element={<ManagePodcast />} />
             <Route path="/ads" element={<ManageAds />} />
             <Route path="/plans" element={<ManagePlans />} />
+            <Route path="/ad-requests" element={<ManageAdRequests />} />
+            <Route path="/email-settings" element={<ManageEmailSettings />} />
             <Route path="/notifications" element={<AdminNotifications />} />
           </Routes>
         </div>

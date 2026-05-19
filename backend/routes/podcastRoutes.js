@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const PodcastGuest = require('../models/PodcastGuest');
+const PodcastFormField = require('../models/PodcastFormField');
+const EmailLog = require('../models/EmailLog');
+const EmailSettings = require('../models/EmailSettings');
 const nodemailer = require('nodemailer');
+const PDFDocument = require('pdfkit');
 
 // ── Email transporter (configured via .env) ──
 const createTransporter = () => {
@@ -23,10 +27,80 @@ const createTransporter = () => {
   });
 };
 
+// ── Generate PDF Buffer ──
+const createPDFBuffer = (guest) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ margin: 50 });
+      let buffers = [];
+
+      doc.on('data', buffers.push.bind(buffers));
+      doc.on('end', () => {
+        let pdfData = Buffer.concat(buffers);
+        resolve(pdfData);
+      });
+
+      // Header
+      doc.fontSize(24).fillColor('#da251d').text('Industrial Times Podcast', { align: 'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(16).fillColor('#000000').text('Guest Application Form', { align: 'center' });
+      doc.moveDown(2);
+
+      // Details
+      doc.fontSize(12).fillColor('#333333');
+      doc.text('First Name: ', { continued: true }).fillColor('#000000').text(guest.firstName);
+      doc.moveDown(0.5);
+      doc.fillColor('#333333').text('Last Name: ', { continued: true }).fillColor('#000000').text(guest.lastName);
+      doc.moveDown(0.5);
+      doc.fillColor('#333333').text('Email: ', { continued: true }).fillColor('#000000').text(guest.email);
+      doc.moveDown(0.5);
+      doc.fillColor('#333333').text('Phone: ', { continued: true }).fillColor('#000000').text(guest.phone);
+      doc.moveDown(0.5);
+      doc.fillColor('#333333').text('Website: ', { continued: true }).fillColor('#000000').text(guest.website || 'N/A');
+      doc.moveDown(0.5);
+      doc.fillColor('#333333').text('Earliest Availability: ', { continued: true }).fillColor('#000000').text(guest.earliestAvailability);
+      doc.moveDown(1.5);
+
+      if (guest.customData && Object.keys(guest.customData).length > 0) {
+        doc.fontSize(14).fillColor('#da251d').text('Additional Information');
+        doc.moveDown(0.5);
+        doc.fontSize(12);
+        for (const [key, value] of Object.entries(guest.customData)) {
+          doc.fillColor('#333333').text(`${key}: `, { continued: true }).fillColor('#000000').text(value);
+          doc.moveDown(0.5);
+        }
+        doc.moveDown(1);
+      }
+
+      // Background
+      doc.fontSize(14).fillColor('#da251d').text('Background & Topic Idea');
+      doc.moveDown(0.5);
+      doc.fontSize(12).fillColor('#000000').text(guest.background, { align: 'justify' });
+
+      // Footer
+      doc.moveDown(3);
+      doc.fontSize(10).fillColor('#888888').text(`Submitted on: ${new Date().toLocaleString()}`, { align: 'center' });
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+};
+
 // ── Send admin notification email ──
 const sendAdminEmail = async (guest) => {
   const transporter = createTransporter();
-  const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
+  let adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
+  
+  try {
+    const [settings] = await EmailSettings.findOrCreate({ where: { id: 1 } });
+    if (settings && settings.adminEmail) {
+      adminEmail = settings.adminEmail;
+    }
+  } catch (e) {
+    console.error("Could not fetch email settings", e);
+  }
 
   const emailBody = `
     <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f9fafb; padding: 0;">
@@ -57,6 +131,11 @@ const sendAdminEmail = async (guest) => {
             <td style="padding: 12px 0; color: #6b7280; font-weight: 600;">Availability</td>
             <td style="padding: 12px 0; color: #111827; font-weight: 700;">${guest.earliestAvailability}</td>
           </tr>
+          ${guest.customData ? Object.entries(guest.customData).map(([k, v]) => `
+          <tr style="border-bottom: 1px solid #f3f4f6;">
+            <td style="padding: 12px 0; color: #6b7280; font-weight: 600;">${k}</td>
+            <td style="padding: 12px 0; color: #111827;">${v}</td>
+          </tr>`).join('') : ''}
           <tr>
             <td style="padding: 12px 0; color: #6b7280; font-weight: 600; vertical-align: top;">Background</td>
             <td style="padding: 12px 0; color: #111827; line-height: 1.6;">${guest.background}</td>
@@ -74,12 +153,34 @@ const sendAdminEmail = async (guest) => {
       await transporter.sendMail({
         from: `"Industrial Times Podcast" <${process.env.SMTP_USER}>`,
         to: adminEmail,
+        replyTo: guest.email,
         subject: `🎙️ New Podcast Guest: ${guest.firstName} ${guest.lastName}`,
-        html: emailBody
+        html: emailBody,
+        attachments: [
+          {
+            filename: `${guest.firstName}_${guest.lastName}_Application.pdf`,
+            content: await createPDFBuffer(guest),
+            contentType: 'application/pdf'
+          }
+        ]
       });
       console.log(`✅ Podcast notification email sent to ${adminEmail}`);
+      
+      await EmailLog.create({
+        toEmail: adminEmail,
+        subject: `🎙️ New Podcast Guest: ${guest.firstName} ${guest.lastName}`,
+        status: 'sent',
+        type: 'podcast_admin_notification'
+      });
     } catch (err) {
       console.error('❌ Email send failed:', err.message);
+      await EmailLog.create({
+        toEmail: adminEmail,
+        subject: `🎙️ New Podcast Guest: ${guest.firstName} ${guest.lastName}`,
+        status: 'failed',
+        errorMessage: err.message,
+        type: 'podcast_admin_notification'
+      });
     }
   } else {
     console.log('──────────────────────────────────────────');
@@ -92,12 +193,72 @@ const sendAdminEmail = async (guest) => {
   }
 };
 
+// ── Send user confirmation email ──
+const sendUserConfirmationEmail = async (guest) => {
+  const transporter = createTransporter();
+  
+  let adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
+  try {
+    const [settings] = await EmailSettings.findOrCreate({ where: { id: 1 } });
+    if (settings && settings.adminEmail) {
+      adminEmail = settings.adminEmail;
+    }
+  } catch (e) { }
+
+  const emailBody = `
+    <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #fff; padding: 20px;">
+      <h2 style="color: #da251d;">Thank You for Your Application!</h2>
+      <p>Hi ${guest.firstName},</p>
+      <p>We have successfully received your application to be a guest on the Industrial Times Podcast.</p>
+      <p>Our team will review your background and topic ideas. We will get back to you shortly regarding the next steps.</p>
+      <br/>
+      <p>Best regards,</p>
+      <p><strong>Industrial Times Team</strong></p>
+    </div>
+  `;
+
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: `"Industrial Times Podcast" <${process.env.SMTP_USER}>`,
+        to: guest.email,
+        replyTo: adminEmail,
+        subject: `Your Podcast Application - Industrial Times`,
+        html: emailBody,
+        attachments: [
+          {
+            filename: `Your_Podcast_Application.pdf`,
+            content: await createPDFBuffer(guest),
+            contentType: 'application/pdf'
+          }
+        ]
+      });
+      
+      await EmailLog.create({
+        toEmail: guest.email,
+        subject: `Your Podcast Application - Industrial Times`,
+        status: 'sent',
+        type: 'podcast_submission'
+      });
+    } catch (err) {
+      console.error('❌ User email send failed:', err.message);
+      await EmailLog.create({
+        toEmail: guest.email,
+        subject: `Your Podcast Application - Industrial Times`,
+        status: 'failed',
+        errorMessage: err.message,
+        type: 'podcast_submission'
+      });
+    }
+  }
+};
+
 // ═══════════════════════════════════════
 //  PUBLIC: Submit podcast guest form
 // ═══════════════════════════════════════
 router.post('/', async (req, res) => {
   try {
-    const { firstName, lastName, email, phone, website, background, earliestAvailability } = req.body;
+    const { firstName, lastName, email, phone, website, background, earliestAvailability, customData } = req.body;
 
     // Basic validation
     if (!firstName || !lastName || !email || !phone || !background || !earliestAvailability) {
@@ -111,11 +272,13 @@ router.post('/', async (req, res) => {
       phone: phone.trim(),
       website: website ? website.trim() : '',
       background: background.trim(),
-      earliestAvailability
+      earliestAvailability,
+      customData: customData || {}
     });
 
     // Send email notification (non-blocking)
     sendAdminEmail(guest).catch(console.error);
+    sendUserConfirmationEmail(guest).catch(console.error);
 
     res.status(201).json({ message: 'Your podcast guest application has been submitted successfully!', guest });
   } catch (err) {
@@ -136,6 +299,50 @@ router.get('/', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch podcast guests.' });
   }
 });
+
+// ═══════════════════════════════════════
+//  PUBLIC/ADMIN: Form Fields API
+// ═══════════════════════════════════════
+router.get('/fields', async (req, res) => {
+  try {
+    const fields = await PodcastFormField.findAll({ order: [['order', 'ASC']] });
+    res.json(fields);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch form fields.' });
+  }
+});
+
+router.post('/fields', async (req, res) => {
+  try {
+    const field = await PodcastFormField.create(req.body);
+    res.status(201).json(field);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.put('/fields/:id', async (req, res) => {
+  try {
+    const field = await PodcastFormField.findByPk(req.params.id);
+    if (!field) return res.status(404).json({ error: 'Field not found' });
+    await field.update(req.body);
+    res.json(field);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete('/fields/:id', async (req, res) => {
+  try {
+    const field = await PodcastFormField.findByPk(req.params.id);
+    if (!field) return res.status(404).json({ error: 'Field not found' });
+    await field.destroy();
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // ═══════════════════════════════════════
 //  ADMIN: Get pending count for badge
@@ -185,6 +392,84 @@ router.delete('/:id', async (req, res) => {
   } catch (err) {
     console.error('Delete error:', err);
     res.status(500).json({ error: 'Failed to delete guest.' });
+  }
+});
+
+// ═══════════════════════════════════════
+//  ADMIN: Reply to podcast guest
+// ═══════════════════════════════════════
+router.post('/:id/reply', async (req, res) => {
+  try {
+    const { subject, message } = req.body;
+    
+    if (!subject || !message) {
+      return res.status(400).json({ error: 'Subject and message are required.' });
+    }
+
+    const guest = await PodcastGuest.findByPk(req.params.id);
+    if (!guest) return res.status(404).json({ error: 'Guest not found.' });
+
+    const transporter = createTransporter();
+    
+    if (!transporter) {
+      return res.status(500).json({ error: 'Email SMTP is not configured on the server.' });
+    }
+
+    let adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
+    let signature = '';
+    try {
+      const [settings] = await EmailSettings.findOrCreate({ where: { id: 1 } });
+      if (settings) {
+        adminEmail = settings.adminEmail || adminEmail;
+        signature = settings.emailSignature || '';
+      }
+    } catch (e) { }
+
+    const formattedMessage = message.replace(/\n/g, '<br/>');
+    const formattedSignature = signature.replace(/\n/g, '<br/>');
+
+    const emailBody = `
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #fff; padding: 20px;">
+        <p>${formattedMessage}</p>
+        <br/><br/>
+        <p>${formattedSignature}</p>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: `"Industrial Times Podcast" <${process.env.SMTP_USER}>`,
+      to: guest.email,
+      replyTo: adminEmail,
+      subject: subject,
+      html: emailBody
+    });
+
+    await EmailLog.create({
+      toEmail: guest.email,
+      subject: subject,
+      status: 'sent',
+      type: 'podcast_reply'
+    });
+
+    res.json({ message: 'Reply sent successfully.' });
+  } catch (err) {
+    console.error('Reply error:', err);
+    
+    // Log failure if possible
+    try {
+      const guest = await PodcastGuest.findByPk(req.params.id);
+      if (guest) {
+        await EmailLog.create({
+          toEmail: guest.email,
+          subject: req.body.subject || 'Podcast Reply',
+          status: 'failed',
+          errorMessage: err.message,
+          type: 'podcast_reply'
+        });
+      }
+    } catch (e) { }
+    
+    res.status(500).json({ error: 'Failed to send reply. Please check SMTP settings.' });
   }
 });
 

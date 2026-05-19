@@ -9,6 +9,14 @@ const adRoutes = require('./routes/adRoutes');
 const podcastRoutes = require('./routes/podcastRoutes');
 const membershipRoutes = require('./routes/membershipRoutes');
 const planRoutes = require('./routes/planRoutes');
+const adRequestRoutes = require('./routes/adRequestRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
+
+// Ensure models are loaded for sequelize.sync
+require('./models/AdRequest');
+require('./models/EmailSettings');
+require('./models/EmailLog');
+require('./models/PodcastFormField');
 
 // Load env vars
 require('dotenv').config({ path: path.join(__dirname, '.env') });
@@ -28,6 +36,8 @@ app.use('/api/ads', adRoutes);
 app.use('/api/podcast', podcastRoutes);
 app.use('/api/membership', membershipRoutes);
 app.use('/api/plans', planRoutes);
+app.use('/api/ad-requests', adRequestRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {

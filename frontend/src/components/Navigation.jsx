@@ -43,50 +43,7 @@ const Navigation = () => {
   const [selectedState, setSelectedState] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
 
-  // Podcast Modal State
-  const [showPodcastModal, setShowPodcastModal] = useState(false);
-  const [submittingPodcast, setSubmittingPodcast] = useState(false);
-  const [podcastData, setPodcastData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    website: '',
-    background: '',
-    earliestAvailability: ''
-  });
-
-  const handlePodcastSubmit = async (e) => {
-    e.preventDefault();
-    setSubmittingPodcast(true);
-    try {
-      const response = await fetch(`${API_BASE}/api/podcast`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(podcastData)
-      });
-      const data = await response.json();
-      if (response.ok) {
-        alert("Thank you! Your podcast guest application has been submitted successfully.");
-        setShowPodcastModal(false);
-        setPodcastData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          phone: '',
-          website: '',
-          background: '',
-          earliestAvailability: ''
-        });
-      } else {
-        alert(data.error || "Submission failed. Please try again.");
-      }
-    } catch (err) {
-      alert("Server error. Please try again later.");
-    } finally {
-      setSubmittingPodcast(false);
-    }
-  };
+  // Podcast Modal State (Deprecated - now using full page route)
 
   // Live clock
   useEffect(() => {
@@ -191,6 +148,18 @@ const Navigation = () => {
     };
 
     fetchAutoLocation();
+
+    // Ultimate safeguard: if still 'Detecting...' after 8 seconds, force a default
+    const safetyTimer = setTimeout(() => {
+      setWeather(prev => {
+        if (prev.city === 'Detecting...') {
+          return { temp: null, humidity: null, city: 'Jamshedpur', lat: 22.8046, lon: 86.2029 };
+        }
+        return prev;
+      });
+    }, 8000);
+
+    return () => clearTimeout(safetyTimer);
   }, []);
 
   const handleDateChange = (e) => {
@@ -332,29 +301,34 @@ const Navigation = () => {
             </div>
 
             {/* RIGHT: Favorites + Podcast + Login */}
-            <div className="brand-header-right">
+            <div className="brand-header-right d-none d-md-flex">
               <button 
                 className="brand-action-link podcast-header-btn" 
-                onClick={() => setShowPodcastModal(true)}
+                onClick={() => window.open('/podcast-apply', '_blank')}
               >
                 <i className="bi bi-mic-fill"></i>
                 <span className="d-none d-md-inline">Podcast</span>
               </button>
-              <Link to="/favorites" className="brand-action-link" title="My Favorites">
-                <i className="bi bi-heart-fill text-danger"></i>
-                <span className="d-none d-md-inline">Favorites</span>
-              </Link>
-              <div 
-                className="brand-action-link upgrade-header-btn cursor-pointer"
-                onClick={() => window.open('/corporate/choose-plan', '_blank')}
-              >
-                <i className="bi bi-building-fill"></i>
-                <span className="d-none d-md-inline text-uppercase fw-black">Corporate</span>
-              </div>
-              {userInfo && (
+
+              {/* Hide Corporate button if user already has a corporate role */}
+              {!(userInfo && userInfo.role === 'corporate') && (
+                <div 
+                  className="brand-action-link upgrade-header-btn cursor-pointer"
+                  onClick={() => window.open('/corporate/choose-plan', '_blank')}
+                >
+                  <i className="bi bi-building-fill"></i>
+                  <span className="d-none d-md-inline text-uppercase fw-black">Corporate</span>
+                </div>
+              )}
+              {userInfo ? (
                 <Link to="/profile" className="brand-action-link">
                   <i className="bi bi-person-circle text-danger"></i>
                   <span>{userInfo.name.split(' ')[0]}</span>
+                </Link>
+              ) : (
+                <Link to="/login" className="brand-action-link">
+                  <i className="bi bi-box-arrow-in-right text-danger"></i>
+                  <span>Login</span>
                 </Link>
               )}
             </div>
@@ -436,6 +410,43 @@ const Navigation = () => {
 
             <div className="px-2">
               <ListGroup variant="flush">
+                {/* Corporate Portal Link */}
+                {!(userInfo && userInfo.role === 'corporate') && (
+                <ListGroup.Item className="bg-transparent border-0 py-1 px-2 mb-1">
+                    <div
+                      className="nav-sidebar-link d-flex align-items-center gap-3 p-2 rounded-3 text-decoration-none transition-all w-100 cursor-pointer"
+                      onClick={() => {
+                        handleClose();
+                        window.open('/corporate/choose-plan', '_blank');
+                      }}
+                      style={{ background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(244, 67, 54, 0.1))' }}
+                    >
+                      <div className="icon-wrapper d-flex align-items-center justify-content-center rounded-2 transition-all" style={{ width: '32px', height: '32px', background: 'linear-gradient(135deg, #ff9800, #f44336)' }}>
+                        <i className="bi bi-building-fill text-white small"></i>
+                      </div>
+                      <span className="fw-bold" style={{ color: '#ff9800' }}>Corporate Portal</span>
+                    </div>
+                </ListGroup.Item>
+                )}
+
+                {/* Podcast Registration */}
+                <ListGroup.Item className="bg-transparent border-0 py-1 px-2 mb-1">
+                    <div
+                      className="nav-sidebar-link d-flex align-items-center gap-3 p-2 rounded-3 text-decoration-none transition-all w-100 cursor-pointer"
+                      onClick={() => { handleClose(); window.open('/podcast-apply', '_blank'); }}
+                    >
+                      <div className="icon-wrapper d-flex align-items-center justify-content-center rounded-2 transition-all" style={{ width: '32px', height: '32px', background: 'rgba(218, 37, 29, 0.2)' }}>
+                        <i className="bi bi-mic-fill text-danger fs-6"></i>
+                      </div>
+                      <span className="fw-bold text-danger">Podcast Registration</span>
+                    </div>
+                </ListGroup.Item>
+
+
+
+                <div className="border-bottom border-secondary border-opacity-25 my-2 mx-3"></div>
+
+                {/* Dynamic Category Links */}
                 {navLinks.map((link, idx) => (
                   <ListGroup.Item key={link.name} className="bg-transparent border-0 py-1 px-2 mb-1">
                     <Link
@@ -452,32 +463,6 @@ const Navigation = () => {
                     </Link>
                   </ListGroup.Item>
                 ))}
-                <ListGroup.Item className="bg-transparent border-0 py-1 px-2 mb-1">
-                    <div
-                      className="nav-sidebar-link d-flex align-items-center gap-3 p-2 rounded-3 text-decoration-none transition-all w-100 cursor-pointer"
-                      onClick={() => { handleClose(); setShowPodcastModal(true); }}
-                    >
-                      <div className="icon-wrapper d-flex align-items-center justify-content-center rounded-2 transition-all" style={{ width: '32px', height: '32px', background: 'rgba(218, 37, 29, 0.2)' }}>
-                        <i className="bi bi-mic-fill text-danger fs-6"></i>
-                      </div>
-                      <span className="fw-bold text-danger">Podcast Registration</span>
-                    </div>
-                </ListGroup.Item>
-                <ListGroup.Item className="bg-transparent border-0 py-1 px-2 mb-1">
-                    <div
-                      className="nav-sidebar-link d-flex align-items-center gap-3 p-2 rounded-3 text-decoration-none transition-all w-100 cursor-pointer"
-                      onClick={() => {
-                        handleClose();
-                        window.open('/corporate/choose-plan', '_blank');
-                      }}
-                      style={{ background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(244, 67, 54, 0.1))' }}
-                    >
-                      <div className="icon-wrapper d-flex align-items-center justify-content-center rounded-2 transition-all" style={{ width: '32px', height: '32px', background: 'linear-gradient(135deg, #ff9800, #f44336)' }}>
-                        <i className="bi bi-building-fill text-white small"></i>
-                      </div>
-                      <span className="fw-bold" style={{ color: '#ff9800' }}>Corporate Portal</span>
-                    </div>
-                </ListGroup.Item>
               </ListGroup>
             </div>
           </div>
@@ -496,109 +481,7 @@ const Navigation = () => {
 
     </header>
 
-      {/* PODCAST REGISTRATION MODAL — Moved to bottom to avoid clipping */}
-      <Modal 
-        show={showPodcastModal} 
-        onHide={() => setShowPodcastModal(false)} 
-        size="lg" 
-        centered
-        className="podcast-modal"
-        backdrop="static"
-      >
-        <Modal.Header closeButton className="border-0 pb-0 px-4 pt-4">
-          <Modal.Title className="fw-black fs-2">Be Our Guest!</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="pt-2 px-4 pb-4">
-          <p className="text-muted mb-4" style={{ fontSize: '0.95rem' }}>
-            Want to be on our show? Give us a little bit of information about yourself and the topic(s) you'd like to discuss in your episode.
-          </p>
-          
-          <Form onSubmit={handlePodcastSubmit}>
-            <Row className="mb-4">
-              <Form.Group as={Col} md={6}>
-                <Form.Label className="fw-bold small mb-1">NAME <span className="text-danger">(REQUIRED)</span></Form.Label>
-                <Form.Control 
-                  type="text" 
-                  placeholder="Sarah" 
-                  required 
-                  value={podcastData.firstName}
-                  onChange={(e) => setPodcastData({...podcastData, firstName: e.target.value})}
-                />
-                <Form.Text className="text-muted x-small">First</Form.Text>
-              </Form.Group>
-              <Form.Group as={Col} md={6}>
-                <Form.Label className="fw-bold small mb-1">&nbsp;</Form.Label>
-                <Form.Control 
-                  type="text" 
-                  placeholder="Kirkwold" 
-                  required 
-                  value={podcastData.lastName}
-                  onChange={(e) => setPodcastData({...podcastData, lastName: e.target.value})}
-                />
-                <Form.Text className="text-muted x-small">Last</Form.Text>
-              </Form.Group>
-            </Row>
 
-            <Form.Group className="mb-4">
-              <Form.Label className="fw-bold small mb-1">EMAIL <span className="text-danger">(REQUIRED)</span></Form.Label>
-              <Form.Control 
-                type="email" 
-                placeholder="test@test.com" 
-                required 
-                value={podcastData.email}
-                onChange={(e) => setPodcastData({...podcastData, email: e.target.value})}
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-4">
-              <Form.Label className="fw-bold small mb-1">PHONE <span className="text-danger">(REQUIRED)</span></Form.Label>
-              <Form.Control 
-                type="tel" 
-                placeholder="555-555-5555" 
-                required 
-                value={podcastData.phone}
-                onChange={(e) => setPodcastData({...podcastData, phone: e.target.value})}
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-4">
-              <Form.Label className="fw-bold small mb-1">YOUR WEBSITE</Form.Label>
-              <Form.Control 
-                type="text" 
-                placeholder="www.gravity.com" 
-                value={podcastData.website}
-                onChange={(e) => setPodcastData({...podcastData, website: e.target.value})}
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-4">
-              <Form.Label className="fw-bold small mb-1">WHAT IS YOUR BACKGROUND? <span className="text-danger">(REQUIRED)</span></Form.Label>
-              <Form.Control 
-                as="textarea" 
-                rows={6} 
-                placeholder="Emerging marketing technology, content innovation, and building human connections in digital spaces. I would love to be a guest on your show!" 
-                required 
-                value={podcastData.background}
-                onChange={(e) => setPodcastData({...podcastData, background: e.target.value})}
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-4" style={{ maxWidth: '250px' }}>
-              <Form.Label className="fw-bold small mb-1">EARLIEST AVAILABILITY <span className="text-danger">(REQUIRED)</span></Form.Label>
-              <Form.Control 
-                type="date" 
-                required 
-                value={podcastData.earliestAvailability}
-                onChange={(e) => setPodcastData({...podcastData, earliestAvailability: e.target.value})}
-              />
-            </Form.Group>
-
-            <Button variant="primary" type="submit" className="px-5 fw-bold" disabled={submittingPodcast}>
-              {submittingPodcast ? 'SUBMITTING...' : 'SUBMIT'}
-            </Button>
-          </Form>
-        </Modal.Body>
-      </Modal>
 
       {/* MEMBERSHIP PLAN POPUP MODAL */}
       <MembershipModal 

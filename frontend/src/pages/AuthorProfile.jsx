@@ -1,12 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Badge, Card } from 'react-bootstrap';
 import Advertisement from '../components/Advertisement';
 import API_BASE from '../config/api';
 
 const AuthorProfile = () => {
   const { name } = useParams();
+  const navigate = useNavigate();
   const [articles, setArticles] = useState([]);
+
+  useEffect(() => {
+    // If logged-in user visits their own author profile, redirect to dashboard
+    const saved = sessionStorage.getItem('userInfo');
+    if (saved) {
+      const u = JSON.parse(saved);
+      if (u.name && u.name.toLowerCase() === decodeURIComponent(name).toLowerCase() && (u.role === 'author' || u.role === 'corporate')) {
+        navigate('/user-dashboard', { replace: true });
+        return;
+      }
+    }
+  }, [name, navigate]);
 
   useEffect(() => {
     const fetchAuthorArticles = async () => {

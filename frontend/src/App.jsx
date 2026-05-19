@@ -21,10 +21,12 @@ import AuthorProfile from './pages/AuthorProfile';
 import Advertisement from './components/Advertisement';
 import UpgradePlan from './pages/UpgradePlan';
 import UserProfile from './pages/UserProfile';
+import PodcastApply from './pages/PodcastApply';
 import CorporateChoosePlan from './pages/corporate/CorporateChoosePlan';
 import CorporateLogin from './pages/corporate/CorporateLogin';
 import CorporatePayment from './pages/corporate/CorporatePayment';
 import ReporterDashboard from './pages/ReporterDashboard';
+import UserDashboard from './pages/UserDashboard';
 
 const PublicLayout = () => (
   <div className="d-flex flex-column min-vh-100">
@@ -52,13 +54,15 @@ function App() {
       <Routes>
         {/* Full Screen Layout (Admin, Login, Signup) */}
         <Route element={<AdminLayout />}>
-          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/superadmin@123" element={<AdminLogin />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/corporate/choose-plan" element={<CorporateChoosePlan />} />
           <Route path="/corporate/login" element={<CorporateLogin />} />
           <Route path="/corporate/payment" element={<CorporatePayment />} />
           <Route path="/reporter-dashboard" element={<ReporterDashboard />} />
+          <Route path="/user-dashboard" element={<UserDashboard />} />
+          <Route path="/podcast-apply" element={<PodcastApply />} />
           <Route 
             path="/admin/*" 
             element={

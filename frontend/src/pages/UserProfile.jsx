@@ -28,7 +28,14 @@ const UserProfile = () => {
   useEffect(() => {
     const saved = sessionStorage.getItem('userInfo');
     if (saved) {
-      setUserInfo(JSON.parse(saved));
+      const u = JSON.parse(saved);
+      // Reporters and corporate users get full dashboard
+      if (u.role === 'author' || u.role === 'corporate') {
+        navigate('/user-dashboard', { replace: true });
+        return;
+      }
+      // Readers stay on simple profile page
+      setUserInfo(u);
     } else {
       navigate('/login');
     }
@@ -76,6 +83,13 @@ const UserProfile = () => {
       });
       
       const updatedUser = { ...userInfo, profilePic: data.imageUrl };
+
+      // Persist to database
+      await axios.put(`${API_BASE}/api/auth/update-profile`, {
+        userId: userInfo.id,
+        profilePic: data.imageUrl
+      });
+
       setUserInfo(updatedUser);
       sessionStorage.setItem('userInfo', JSON.stringify(updatedUser));
       alert('Profile picture updated!');

@@ -61,6 +61,7 @@ router.post('/signup', async (req, res) => {
           phone: user.phone,
           selectedPlan: user.selectedPlan,
           membershipPlan: user.membershipPlan,
+          createdAt: user.createdAt,
           token: generateToken(user.id),
           message: 'Corporate account registered successfully! Redirecting to secure billing...'
         });
@@ -72,6 +73,7 @@ router.post('/signup', async (req, res) => {
           email: user.email,
           role: user.role,
           status: user.status,
+          createdAt: user.createdAt,
           token: generateToken(user.id)
         });
       }
@@ -121,6 +123,7 @@ router.post('/login', async (req, res) => {
         expertise: user.expertise,
         portfolio: user.portfolio,
         profilePic: user.profilePic,
+        createdAt: user.createdAt,
         token: generateToken(user.id)
       });
     } else {
@@ -271,6 +274,37 @@ router.post('/reject-reporter', async (req, res) => {
 
     res.json({
       message: `Reporter application from "${user.name}" has been rejected.`
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @desc    Update user profile (e.g., profile picture)
+// @route   PUT /api/auth/update-profile
+router.put('/update-profile', async (req, res) => {
+  const { userId, profilePic } = req.body;
+  
+  try {
+    if (!userId) return res.status(400).json({ message: 'User ID is required' });
+    
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    if (profilePic !== undefined) {
+      user.profilePic = profilePic;
+    }
+    
+    await user.save();
+    
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        profilePic: user.profilePic
+      }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
