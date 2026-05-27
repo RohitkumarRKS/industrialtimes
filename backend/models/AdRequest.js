@@ -53,10 +53,34 @@ const AdRequest = sequelize.define('AdRequest', {
     type: DataTypes.STRING,
     allowNull: true
   },
+  targetState: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: ''
+  },
+  targetCity: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: ''
+  },
+  startDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    defaultValue: null
+  },
+  endDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    defaultValue: null
+  },
   status: {
     type: DataTypes.STRING,
     allowNull: false,
     defaultValue: 'pending'
+  },
+  linkedAdId: {
+    type: DataTypes.STRING,
+    allowNull: true
   },
   adminNotes: {
     type: DataTypes.TEXT,

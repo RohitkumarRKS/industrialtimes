@@ -37,7 +37,7 @@ const PodcastGuest = sequelize.define('PodcastGuest', {
   },
   earliestAvailability: {
     type: DataTypes.DATEONLY,
-    allowNull: false
+    allowNull: true
   },
   status: {
     type: DataTypes.ENUM('pending', 'approved', 'rejected'),

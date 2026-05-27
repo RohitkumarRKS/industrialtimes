@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import API_BASE from '../../config/api';
 
@@ -116,7 +116,9 @@ const AdminLogin = () => {
           <div className="auth-form-container auth-fade-in">
             <div className="auth-form-header">
               <div className="auth-form-logo-center mb-4">
-                <img src="/industrialtimes_white.png" alt="Industrial Times" className="auth-form-center-logo auth-logo-large" style={{ height: '45px', width: 'auto' }} />
+                <Link to="/">
+                  <img src="/industrialtimes_white.png" alt="Industrial Times" className="auth-form-center-logo auth-logo-large" style={{ width: '220px', maxWidth: '100%', height: 'auto' }} />
+                </Link>
               </div>
               <h2 className="auth-form-title">Admin Access</h2>
               <p className="auth-form-subtitle">

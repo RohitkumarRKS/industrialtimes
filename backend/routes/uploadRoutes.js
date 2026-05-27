@@ -32,6 +32,7 @@ const upload = multer({
   fileFilter
 });
 
+// Upload an image
 router.post('/', upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'No file uploaded' });
@@ -39,6 +40,31 @@ router.post('/', upload.single('image'), (req, res) => {
   res.status(200).json({
     message: 'Image uploaded successfully',
     imageUrl: `/uploads/${req.file.filename}`
+  });
+});
+
+// Upload a video file
+const videoFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('video/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only video files are allowed!'), false);
+  }
+};
+
+const videoUpload = multer({
+  storage,
+  fileFilter: videoFilter,
+  limits: { fileSize: 500 * 1024 * 1024 } // 500MB max
+});
+
+router.post('/video', videoUpload.single('video'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No video file uploaded' });
+  }
+  res.status(200).json({
+    message: 'Video uploaded successfully',
+    videoUrl: `/uploads/${req.file.filename}`
   });
 });
 

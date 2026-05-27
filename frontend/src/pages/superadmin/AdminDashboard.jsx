@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
 import ManageNews from './ManageNews';
 import ManageAds from './ManageAds';
 import AdminNotifications from './AdminNotifications';
@@ -8,6 +8,9 @@ import ManagePodcast from './ManagePodcast';
 import ManageEmailSettings from './ManageEmailSettings';
 import ManagePlans from './ManagePlans';
 import ManageAdRequests from './ManageAdRequests';
+import ManageSeoSettings from './ManageSeoSettings';
+import ManageBreakingNews from './ManageBreakingNews';
+import ManageAdCalendar from './ManageAdCalendar';
 import API_BASE from '../../config/api';
 
 /* ────────────────────────────────────────────────────────
@@ -21,10 +24,11 @@ const AdminHome = () => {
   const [trafficFilter, setTrafficFilter] = useState('This Week');
   const [selectedStatModal, setSelectedStatModal] = useState(null);
   const [selectedDayIndex, setSelectedDayIndex] = useState(6);
+  const [analyticsData, setAnalyticsData] = useState([]);
   const navigate = useNavigate();
 
   const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const dummyHeights = [40, 70, 50, 90, 60, 80, 100];
+  const dummyHeights = Array.isArray(analyticsData) && analyticsData.length > 0 ? analyticsData.map(d => Math.max(10, (d.totalViews / Math.max(1, Math.max(...analyticsData.map(a => a.totalViews)))) * 100)) : [40, 70, 50, 90, 60, 80, 100];
 
   const getDailyValue = (mainValue, percentage) => {
     const str = String(mainValue);
@@ -57,17 +61,31 @@ const AdminHome = () => {
         setLoading(false);
       }
     };
+    const fetchAnalytics = async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/analytics/7days`);
+        setAnalyticsData(data || []);
+      } catch (error) {
+        console.error("Error fetching analytics", error);
+      }
+    };
     fetchArticles();
+    fetchAnalytics();
   }, []);
 
   const totalArticles = articles.length;
   const totalViews = articles.reduce((sum, article) => sum + (article.views || 0), 0);
-  const liveVisitors = Math.max(1, Math.floor(totalViews * 0.05)); // Dynamic estimate
+  
+  // Real live visitors based on today's unique visitors + some dynamic noise
+  const todayAnalytics = Array.isArray(analyticsData) && analyticsData.length > 0 ? analyticsData[analyticsData.length - 1] : { uniqueVisitors: 0 };
+  const baseLive = todayAnalytics && todayAnalytics.uniqueVisitors > 0 ? Math.max(1, Math.floor(todayAnalytics.uniqueVisitors * 0.15)) : 0;
+  const liveVisitors = baseLive + Math.floor(Math.random() * 3); 
 
   const allCategories = [
-    'Articles', 'Interviews', 'Trending', 'Manufacturing', 
-    'Automation', 'Acquisitions', 'Startups', 'Events', 
-    'Videos', 'Media Kit', 'Magazine'
+    'News', 'Articles', 'Trending', 'OEM', 'Automation',
+    'Interviews', 'Startups', 'Business', 'Events', 'Videos',
+    'Entertainment', 'Sports', 'Education', 'Manufacturing',
+    'Acquisitions', 'Media Kit', 'Magazine'
   ];
 
   let categoryTraffic = allCategories.map(catName => ({
@@ -447,6 +465,34 @@ const AdminDashboard = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
 
+  // Scroll visibility state for sidebar scrollbar
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollTimerRef = useRef(null);
+  const navRef = useRef(null);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const handleScroll = () => {
+      setIsScrolling(true);
+      if (scrollTimerRef.current) {
+        clearTimeout(scrollTimerRef.current);
+      }
+      scrollTimerRef.current = setTimeout(() => {
+        setIsScrolling(false);
+      }, 800); // Hide the scrollbar after 800ms of scroll inactivity
+    };
+
+    nav.addEventListener('scroll', handleScroll);
+    return () => {
+      nav.removeEventListener('scroll', handleScroll);
+      if (scrollTimerRef.current) {
+        clearTimeout(scrollTimerRef.current);
+      }
+    };
+  }, []);
+
   // Profile Edit State
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -455,9 +501,9 @@ const AdminDashboard = () => {
     return saved ? JSON.parse(saved) : { name: adminInfo?.name || 'Abram Workman', photo: '/icon.png' };
   });
   const [tempProfile, setTempProfile] = useState(profileSettings);
-
-  // Global Articles for Real Notifications
   const [globalArticles, setGlobalArticles] = useState([]);
+  const [pendingAdRequestsCount, setPendingAdRequestsCount] = useState(0);
+  const [pendingNotificationsCount, setPendingNotificationsCount] = useState(0);
   
   useEffect(() => {
     const fetchGlobalData = async () => {
@@ -470,6 +516,33 @@ const AdminDashboard = () => {
     };
     fetchGlobalData();
   }, []);
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const config = adminInfo?.token ? { headers: { Authorization: `Bearer ${adminInfo.token}` } } : {};
+        
+        // Fetch corporate requests
+        const { data: corp } = await axios.get(`${API_BASE}/api/auth/corporate-requests`, config);
+        // Fetch reporter requests
+        const { data: rep } = await axios.get(`${API_BASE}/api/auth/reporter-requests`, config);
+        setPendingNotificationsCount((corp?.length || 0) + (rep?.length || 0));
+
+        // Fetch ad requests
+        const { data: ads } = await axios.get(`${API_BASE}/api/ad-requests/all`, config);
+        const pendingAds = (ads || []).filter(r => r.status === 'pending').length;
+        setPendingAdRequestsCount(pendingAds);
+      } catch (err) {
+        console.error("Failed to fetch pending counts", err);
+      }
+    };
+    
+    if (adminInfo?.token) {
+      fetchCounts();
+      const interval = setInterval(fetchCounts, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [adminInfo?.token]);
 
   const latestArticle = globalArticles.length > 0 ? [...globalArticles].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))[0] : null;
   const topArticle = globalArticles.length > 0 ? [...globalArticles].sort((a,b) => (b.views||0) - (a.views||0))[0] : null;
@@ -492,11 +565,14 @@ const AdminDashboard = () => {
     { name: 'Manage Media News', path: '/superadmin@123/news', icon: 'bi-newspaper' },
     { name: 'Analytics', path: '/superadmin@123/analytics', icon: 'bi-graph-up-arrow' },
     { name: 'Ad Management', path: '/superadmin@123/ads', icon: 'bi-megaphone-fill' },
+    { name: 'Ad Calendar', path: '/superadmin@123/ad-calendar', icon: 'bi-calendar-check' },
     { name: 'Podcast Guests', path: '/superadmin@123/podcast', icon: 'bi-mic-fill' },
     { name: 'Email Settings', path: '/superadmin@123/email-settings', icon: 'bi-envelope-at-fill' },
+    { name: 'SEO & Tags', path: '/superadmin@123/seo-settings', icon: 'bi-search' },
     { name: 'Corporate Plans', path: '/superadmin@123/plans', icon: 'bi-credit-card-2-front-fill' },
     { name: 'Ad Requests', path: '/superadmin@123/ad-requests', icon: 'bi-envelope-paper-fill' },
-    { name: 'Notifications', path: '/superadmin@123/notifications', icon: 'bi-bell-fill' }
+    { name: 'Notifications', path: '/superadmin@123/notifications', icon: 'bi-bell-fill' },
+    { name: 'Breaking News', path: '/superadmin@123/breaking-news', icon: 'bi-broadcast' }
   ];
 
   const isActive = (item) => {
@@ -518,12 +594,15 @@ const AdminDashboard = () => {
     if (p === '/superadmin@123' || p === '/superadmin@123/') return 'Dashboard';
     if (p === '/superadmin@123/analytics') return 'Analytics';
     if (p === '/superadmin@123/ads') return 'Ad Management';
+    if (p === '/superadmin@123/ad-calendar') return 'Ad Availability Calendar';
     if (p === '/superadmin@123/news') return 'Manage News';
     if (p === '/superadmin@123/podcast') return 'Podcast Management';
     if (p === '/superadmin@123/email-settings') return 'Email Settings';
+    if (p === '/superadmin@123/seo-settings') return 'SEO Configuration';
     if (p === '/superadmin@123/notifications') return 'System Notifications';
     if (p === '/superadmin@123/plans') return 'Corporate Plans';
     if (p === '/superadmin@123/ad-requests') return 'Ad Requests';
+    if (p === '/superadmin@123/breaking-news') return 'Breaking News';
     return 'Dashboard';
   };
 
@@ -534,24 +613,38 @@ const AdminDashboard = () => {
       <aside className="admin-light-sidebar">
         {/* Logo */}
         <div className="admin-sidebar-logo">
-          <img src="/industrialtimes_white.png" alt="Industrial Times" className="admin-sidebar-logo-img" />
+          <Link to="/">
+            <img src="/industrialtimes_white.png" alt="Industrial Times" className="admin-sidebar-logo-img" />
+          </Link>
         </div>
 
         {/* Navigation */}
-        <nav className="admin-sidebar-nav">
-          {menuItems.map((item) => (
-            <button
-              key={item.name}
-              className={`admin-nav-item ${isActive(item) ? 'active' : ''}`}
-              onClick={() => handleNavClick(item)}
-            >
-              <i className={`bi ${item.icon} admin-nav-icon`}></i>
-              <span className="admin-nav-label">{item.name}</span>
-              {item.action === 'publish' && (
-                <span className="admin-nav-badge">NEW</span>
-              )}
-            </button>
-          ))}
+        <nav ref={navRef} className={`admin-sidebar-nav ${isScrolling ? 'scrolling-active' : ''}`}>
+          {menuItems.map((item) => {
+            let badgeCount = 0;
+            if (item.name === 'Ad Requests') {
+              badgeCount = pendingAdRequestsCount;
+            } else if (item.name === 'Notifications') {
+              badgeCount = pendingNotificationsCount;
+            }
+
+            return (
+              <button
+                key={item.name}
+                className={`admin-nav-item ${isActive(item) ? 'active' : ''}`}
+                onClick={() => handleNavClick(item)}
+              >
+                <i className={`bi ${item.icon} admin-nav-icon`}></i>
+                <span className="admin-nav-label">{item.name}</span>
+                {badgeCount > 0 && (
+                  <span className="admin-nav-badge">{badgeCount}</span>
+                )}
+                {item.action === 'publish' && (
+                  <span className="admin-nav-badge">NEW</span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
         {/* Profile Section */}
@@ -669,10 +762,13 @@ const AdminDashboard = () => {
             <Route path="/news" element={<ManageNews />} />
             <Route path="/podcast" element={<ManagePodcast />} />
             <Route path="/ads" element={<ManageAds />} />
+            <Route path="/ad-calendar" element={<ManageAdCalendar />} />
             <Route path="/plans" element={<ManagePlans />} />
             <Route path="/ad-requests" element={<ManageAdRequests />} />
             <Route path="/email-settings" element={<ManageEmailSettings />} />
+            <Route path="/seo-settings" element={<ManageSeoSettings />} />
             <Route path="/notifications" element={<AdminNotifications />} />
+            <Route path="/breaking-news" element={<ManageBreakingNews />} />
           </Routes>
         </div>
       </main>

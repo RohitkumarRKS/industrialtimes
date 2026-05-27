@@ -62,6 +62,10 @@ const Article = sequelize.define('Article', {
   views: {
     type: DataTypes.INTEGER,
     defaultValue: 0
+  },
+  tags: {
+    type: DataTypes.TEXT,
+    allowNull: true
   }
 });
 

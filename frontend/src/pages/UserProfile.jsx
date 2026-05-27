@@ -316,7 +316,7 @@ const UserProfile = () => {
               <div className="profile-header p-5 text-center text-white position-relative" style={{ background: accent.gradient }}>
                 <div className="profile-avatar-wrapper mx-auto mb-3 position-relative" style={{ width: '130px', height: '130px' }}>
                   <img 
-                    src={userInfo.profilePic || 'https://via.placeholder.com/150'} 
+                    src={userInfo.profilePic ? (userInfo.profilePic.startsWith('http') ? userInfo.profilePic : `${API_BASE}${userInfo.profilePic.startsWith('/') ? '' : '/'}${userInfo.profilePic}`) : 'https://via.placeholder.com/150'} 
                     alt={userInfo.name}
                     className="rounded-circle border border-4 border-white shadow-lg w-100 h-100 object-fit-cover"
                   />
@@ -667,7 +667,7 @@ const UserProfile = () => {
                                   onChange={e => setCorpArticleForm({ ...corpArticleForm, category: e.target.value })}
                                   required
                                 >
-                                  {['Articles', 'Manufacturing', 'Automation', 'Acquisitions', 'Startups', 'Events'].map(cat => (
+                                  {['News', 'Articles', 'Trending', 'OEM', 'Automation', 'Interviews', 'Startups', 'Business', 'Events', 'Videos', 'Entertainment', 'Sports', 'Education', 'Manufacturing', 'Acquisitions', 'Media Kit', 'Magazine'].map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>
                                   ))}
                                 </select>

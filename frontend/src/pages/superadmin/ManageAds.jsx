@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import API_BASE from '../../config/api';
+import { INDIAN_STATES, INDIAN_STATES_CITIES } from '../../data/indianStatesAndCities';
+import AdAvailabilityCalendar from '../../components/AdAvailabilityCalendar';
 
 /* ─────────────────────────────────────────────────────────────────
    Slot config — single source of truth for dimensions & labels
@@ -15,6 +17,7 @@ const AD_SLOTS = [
     icon: 'bi-layout-text-window',
     color: '#3b82f6',
     bg: '#eff6ff',
+    type: 'private',
   },
   {
     id: 'article-inline',
@@ -25,6 +28,7 @@ const AD_SLOTS = [
     icon: 'bi-text-indent-left',
     color: '#10b981',
     bg: '#ecfdf5',
+    type: 'private',
   },
   {
     id: 'left-skyscraper',
@@ -35,6 +39,7 @@ const AD_SLOTS = [
     icon: 'bi-layout-sidebar',
     color: '#8b5cf6',
     bg: '#f5f3ff',
+    type: 'google',
   },
   {
     id: 'right-half-page',
@@ -45,10 +50,79 @@ const AD_SLOTS = [
     icon: 'bi-layout-sidebar-reverse',
     color: '#ef4444',
     bg: '#fef2f2',
+    type: 'private',
+  },
+  {
+    id: 'mobile-banner',
+    label: 'Mobile Banner Ad',
+    dimension: '300 × 100',
+    w: 300, h: 100,
+    position: 'Mobile Top/Bottom — Shows on mobile screens as a compact banner',
+    icon: 'bi-phone',
+    color: '#f59e0b',
+    bg: '#fffbeb',
+    type: 'private',
+  },
+  {
+    id: 'top-bottom-banner',
+    label: 'Top / Bottom Banner (Google Ad)',
+    dimension: '970 × 90',
+    w: 970, h: 90,
+    position: 'Top/Bottom Content — Shows at the bottom or top of main content',
+    icon: 'bi-window-sidebar',
+    color: '#0ea5e9',
+    bg: '#e0f2fe',
+    type: 'google',
+  },
+  {
+    id: 'in-feed-rectangle',
+    label: 'In-Feed Rectangle (Google Ad)',
+    dimension: '336 × 280',
+    w: 336, h: 280,
+    position: 'News Grid — Shows inline within the article feeds',
+    icon: 'bi-grid-1x2',
+    color: '#8b5cf6',
+    bg: '#f5f3ff',
+    type: 'google',
+  },
+  {
+    id: 'inline-news-footer',
+    label: 'Inline News Footer (Google Ad)',
+    dimension: '728 × 90',
+    w: 728, h: 90,
+    position: 'Article Footer — Shows above reporter profile at the bottom of articles',
+    icon: 'bi-window-dock',
+    color: '#10b981',
+    bg: '#ecfdf5',
+    type: 'google',
+  },
+  {
+    id: 'mobile-rectangle',
+    label: 'Mobile Rectangle Ad',
+    dimension: '300 × 250',
+    w: 300, h: 250,
+    position: 'Mobile Content — Replaces sidebar ads on mobile view',
+    icon: 'bi-phone-landscape',
+    color: '#06b6d4',
+    bg: '#ecfeff',
+    type: 'private',
+  },
+  {
+    id: 'mobile-inline',
+    label: 'Mobile Inline Ad',
+    dimension: '300 × 200',
+    w: 300, h: 200,
+    position: 'Mobile Article — Shows between content on mobile screens',
+    icon: 'bi-phone-fill',
+    color: '#d946ef',
+    bg: '#fdf4ff',
+    type: 'private',
   },
 ];
 
 const CATEGORIES = ['Global (All Pages)', 'Manufacturing', 'Automation', 'Technology', 'Cybersecurity', 'Safety', 'Energy', 'Startups'];
+
+
 
 const EMPTY_AD = {
   id: '',
@@ -58,9 +132,14 @@ const EMPTY_AD = {
   label: 'Advertisement',
   advertiser: '',
   category: '',
+  targetState: '',
+  targetCity: '',
   startDate: '',
   endDate: '',
   active: true,
+  isGoogleAd: false,
+  googleAdCode: '',
+  isSponsored: false,
 };
 
 const ManageAds = () => {
@@ -101,6 +180,11 @@ const ManageAds = () => {
       startDate: ad.startDate || '',
       endDate: ad.endDate || '',
       category: ad.category || '',
+      targetState: ad.targetState || '',
+      targetCity: ad.targetCity || '',
+      isGoogleAd: !!ad.isGoogleAd,
+      googleAdCode: ad.googleAdCode || '',
+      isSponsored: !!ad.isSponsored,
     });
     setError(''); setSuccess('');
     setShowModal(true);
@@ -163,13 +247,48 @@ const ManageAds = () => {
       <div className="manage-ads-header">
         <div>
           <h2 className="manage-ads-title">Advertisement Manager</h2>
-          <p className="manage-ads-subtitle">Manage 728x90 Header/Inline, 160x600 Left, and 300x600 Right ad slots.</p>
+          <p className="manage-ads-subtitle">Manage desktop (728x90, 160x600, 300x600) and mobile (320x50, 300x250, 320x100) ad slots.</p>
         </div>
       </div>
 
-      {/* Slot Cards */}
-      <div className="manage-ads-slots">
-        {AD_SLOTS.map(slot => {
+      {/* Analytics Summary Box */}
+      <div className="card border-0 shadow-sm rounded-4 mb-4" style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }}>
+        <div className="card-body p-4 text-white">
+          <h5 className="fw-bold mb-3"><i className="bi bi-graph-up-arrow me-2"></i> Ad Performance Summary</h5>
+          <div className="row g-4">
+            <div className="col-md-4">
+              <div className="bg-white bg-opacity-10 rounded-3 p-3">
+                <div className="small opacity-75 text-uppercase fw-bold mb-1">Total Ad Clicks</div>
+                <h3 className="mb-0 fw-black">{ads.reduce((sum, ad) => sum + (ad.clicks || 0), 0)}</h3>
+              </div>
+            </div>
+            <div className="col-md-4">
+              <div className="bg-white bg-opacity-10 rounded-3 p-3">
+                <div className="small opacity-75 text-uppercase fw-bold mb-1">Total Impressions</div>
+                <h3 className="mb-0 fw-black">{ads.reduce((sum, ad) => sum + (ad.impressions || 0), 0)}</h3>
+              </div>
+            </div>
+            <div className="col-md-4">
+              <div className="bg-white bg-opacity-10 rounded-3 p-3">
+                <div className="small opacity-75 text-uppercase fw-bold mb-1">Top Performing Ad</div>
+                <h6 className="mb-0 fw-bold text-truncate" style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>
+                  {ads.length > 0 && ads.some(a => a.clicks > 0) 
+                    ? [...ads].sort((a,b) => (b.clicks||0) - (a.clicks||0))[0].advertiser || [...ads].sort((a,b) => (b.clicks||0) - (a.clicks||0))[0].label || 'Unnamed Ad'
+                    : 'No clicks yet'}
+                </h6>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Private Slot Cards */}
+      <div className="d-flex align-items-center mb-3 mt-4">
+        <h4 className="fw-bold mb-0"><i className="bi bi-briefcase-fill text-danger me-2"></i> Private Direct-Sale Ads</h4>
+        <div className="ms-auto"><span className="badge bg-light text-dark border">Corporate / Direct Clients</span></div>
+      </div>
+      <div className="manage-ads-slots mb-5">
+        {AD_SLOTS.filter(s => s.type === 'private').map(slot => {
           const slotAds = ads.filter(a => a.slot === slot.id);
           const activeAds = slotAds.filter(a => a.active);
           return (
@@ -193,9 +312,47 @@ const ManageAds = () => {
                 </div>
               </div>
 
-              <button className="manage-ads-upload-btn" style={{ background: slot.bg, color: slot.color, borderColor: `${slot.color}40` }} onClick={() => handleOpenCreate(slot)}>
-                <i className="bi bi-plus-lg"></i> Upload New Ad ({slot.w}×{slot.h})
+              <button className="manage-ads-upload-btn" style={{ background: slot.bg, color: slot.color, borderColor: `${slot.color}40` }} onClick={() => { handleOpenCreate(slot); setCurrentAd(prev => ({ ...prev, isGoogleAd: false })); }}>
+                <i className="bi bi-plus-lg"></i> Upload Private Ad ({slot.w}×{slot.h})
               </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Google Ad Slot Cards */}
+      <div className="d-flex align-items-center mb-3 mt-5 border-top pt-4">
+        <h4 className="fw-bold mb-0"><i className="bi bi-google text-primary me-2"></i> Google AdSense Slots</h4>
+        <div className="ms-auto"><span className="badge bg-light text-dark border">Google Network</span></div>
+      </div>
+      <div className="manage-ads-slots">
+        {AD_SLOTS.filter(s => s.type === 'google').map(slot => {
+          const slotAds = ads.filter(a => a.slot === slot.id);
+          const activeAds = slotAds.filter(a => a.active);
+          return (
+            <div key={slot.id} className="manage-ads-slot-card" style={{ borderTopColor: slot.color }}>
+              <div className="manage-ads-slot-header">
+                <div>
+                  <div className="manage-ads-slot-label">{slot.label}</div>
+                  <div className="manage-ads-slot-dim" style={{ color: slot.color, fontWeight: 800, fontSize: '1rem' }}>{slot.dimension}</div>
+                  <div className="manage-ads-slot-pos">{slot.position}</div>
+                </div>
+                <span className="manage-ads-slot-badge" style={{ background: slot.bg, color: slot.color }}>
+                  {activeAds.length} live
+                </span>
+              </div>
+
+              <div className="manage-ads-slot-preview" style={{ background: slot.bg, borderColor: `${slot.color}40`, color: slot.color }}>
+                <i className={`bi ${slot.icon}`}></i>
+                <div style={{ textAlign: 'center' }}>
+                  <span style={{ fontWeight: 800, fontSize: '1rem' }}>{slot.w} × {slot.h} px</span>
+                  <div style={{ fontSize: '0.65rem', opacity: 0.7, marginTop: '2px' }}>AdSense Script Area</div>
+                </div>
+              </div>
+
+              <div className="manage-ads-upload-btn" style={{ background: '#f8fafc', color: '#94a3b8', borderColor: '#e2e8f0', cursor: 'default' }}>
+                <i className="bi bi-info-circle"></i> Managed automatically by Google
+              </div>
             </div>
           );
         })}
@@ -245,7 +402,19 @@ const ManageAds = () => {
                     </td>
                     <td style={{ color: '#6b7280' }}>{ad.advertiser || '—'}</td>
                     <td>
-                      <span className="admin-table-badge">{ad.category || 'Global'}</span>
+                      <div className="d-flex flex-column gap-1">
+                        <span className="admin-table-badge" style={{ background: '#eff6ff', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.25)' }}>{ad.category || 'Global Category'}</span>
+                        {ad.targetState ? (
+                          <span className="admin-table-badge" style={{ background: '#ecfdf5', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.25)', textTransform: 'none' }}>
+                            <i className="bi bi-geo-alt-fill me-1"></i>
+                            {ad.targetCity ? `${ad.targetCity}, ` : ''}{ad.targetState}
+                          </span>
+                        ) : (
+                          <span className="admin-table-badge" style={{ background: '#f3f4f6', color: '#6b7280', border: '1px solid rgba(107, 114, 128, 0.25)', textTransform: 'none' }}>
+                            <i className="bi bi-globe me-1"></i> Global Location
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ fontSize: '0.72rem', color: '#6b7280' }}>
                       {ad.startDate ? `${ad.startDate}` : 'Always'}
@@ -313,6 +482,18 @@ const ManageAds = () => {
                     <div style={{ fontWeight: 900, fontSize: '1.1rem', lineHeight: 1 }}>{slotInfo?.w} × {slotInfo?.h}</div>
                     <div style={{ fontSize: '0.6rem', fontWeight: 600, opacity: 0.7, marginTop: '2px' }}>PIXELS</div>
                   </div>
+                </div>
+
+                <div className="publish-field" style={{ display: 'flex', gap: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={currentAd.isSponsored}
+                      onChange={e => setCurrentAd(prev => ({ ...prev, isSponsored: e.target.checked }))}
+                      style={{ width: '18px', height: '18px' }}
+                    />
+                    <span style={{ fontWeight: 700, color: '#1e293b' }}>Show "ADVERTISEMENT" Label?</span>
+                  </label>
                 </div>
 
                 <div className="publish-field">
@@ -392,22 +573,75 @@ const ManageAds = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="publish-field">
-                    <label>Start Date (Optional)</label>
+                    <label>Target State <span style={{ color: '#ef4444' }}>*</span></label>
+                    <select
+                      value={currentAd.targetState || ''}
+                      onChange={e => setCurrentAd(prev => ({ ...prev, targetState: e.target.value, targetCity: '', hideCalendar: false }))}
+                      required
+                    >
+                      <option value="">— Select State —</option>
+                      {INDIAN_STATES.map(st => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="publish-field">
+                    <label>Target City <span style={{ color: '#ef4444' }}>*</span></label>
+                    <select
+                      value={currentAd.targetCity || ''}
+                      onChange={e => setCurrentAd(prev => ({ ...prev, targetCity: e.target.value, hideCalendar: false }))}
+                      disabled={!currentAd.targetState}
+                      required
+                    >
+                      <option value="">— Select City —</option>
+                      {currentAd.targetState && INDIAN_STATES_CITIES[currentAd.targetState]?.map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="publish-field">
+                    <label>Start Date <span style={{ color: '#ef4444' }}>*</span></label>
                     <input
                       type="date"
                       value={currentAd.startDate}
                       onChange={e => setCurrentAd(prev => ({ ...prev, startDate: e.target.value }))}
+                      required
                     />
                   </div>
                   <div className="publish-field">
-                    <label>End Date (Optional)</label>
+                    <label>End Date <span style={{ color: '#ef4444' }}>*</span></label>
                     <input
                       type="date"
                       value={currentAd.endDate}
                       onChange={e => setCurrentAd(prev => ({ ...prev, endDate: e.target.value }))}
+                      required
                     />
                   </div>
                 </div>
+
+                {/* Availability Calendar */}
+                {currentAd.targetState && currentAd.targetCity && !currentAd.hideCalendar && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#374151', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
+                      <span><i className="bi bi-calendar-check me-1"></i> Slot Availability Calendar</span>
+                      <button type="button" onClick={() => setCurrentAd(prev => ({ ...prev, hideCalendar: true }))} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}><i className="bi bi-x-lg"></i></button>
+                    </label>
+                    <div style={{ maxWidth: '400px', margin: '0 auto' }}>
+                      <AdAvailabilityCalendar
+                        slot={currentAd.slot}
+                        targetState={currentAd.targetState}
+                        targetCity={currentAd.targetCity}
+                        API_BASE={API_BASE}
+                        authToken={adminInfo?.token}
+                        compact
+                        onSelectDate={(dateStr) => setCurrentAd(prev => ({ ...prev, startDate: dateStr, endDate: dateStr, hideCalendar: true }))}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="publish-toggle-row">
                   <label className="publish-toggle">

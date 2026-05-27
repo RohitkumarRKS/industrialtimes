@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Badge } from 'react-bootstrap';
 import Advertisement from '../components/Advertisement';
+import MobileStickyAd from '../components/MobileStickyAd';
 
 const TrendingArticleDetail = () => {
   const location = useLocation();
@@ -52,7 +53,7 @@ const TrendingArticleDetail = () => {
             <i className="bi bi-graph-up-arrow me-2"></i> TRENDING
           </Badge>
           
-          <h1 className="display-5 fw-black mb-4 lh-sm">{article.parsedTitle || article.title}</h1>
+          <h1 className="article-title mb-4">{article.parsedTitle || article.title}</h1>
           
           <div className="d-flex align-items-center gap-3 mb-5 pb-4 border-bottom">
             <div className="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: '45px', height: '45px' }}>
@@ -69,12 +70,15 @@ const TrendingArticleDetail = () => {
             </div>
           </div>
 
-          <div className="my-3 py-2 border-top border-bottom border-light" style={{ backgroundColor: '#fcfcfc' }}>
+          <div className="my-3 py-2 border-top border-bottom border-light ad-desktop-only" style={{ backgroundColor: '#fcfcfc' }}>
             <Advertisement slot="article-inline" />
+          </div>
+          <div className="my-3 py-2 ad-mobile-only mobile-ad-row">
+            <Advertisement slot="mobile-inline" />
           </div>
 
           <div className="article-content bg-white p-4 p-md-5 rounded-4 shadow-sm border mb-5">
-            <div className="article-body-text" style={{ fontSize: '1.1rem', lineHeight: '1.8', color: '#374151' }}>
+            <div className="article-body-text">
               <div dangerouslySetInnerHTML={createMarkup()} />
               
               <div className="mt-5 p-4 bg-light border-start border-danger border-4 rounded-3">
@@ -84,6 +88,11 @@ const TrendingArticleDetail = () => {
                   To read the full, uninterrupted article, please visit the original source.
                 </p>
               </div>
+            </div>
+
+            {/* INLINE NEWS FOOTER AD — 728 × 90 */}
+            <div className="my-4 text-center">
+              <Advertisement slot="inline-news-footer" />
             </div>
 
             <div className="mt-5 pt-4 border-top d-flex flex-wrap gap-2">
@@ -122,6 +131,9 @@ const TrendingArticleDetail = () => {
           </div>
         </Col>
       </Row>
+
+      {/* MOBILE STICKY BOTTOM BANNER — 320×50 */}
+      <MobileStickyAd />
     </Container>
   );
 };

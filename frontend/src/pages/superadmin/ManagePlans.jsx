@@ -154,9 +154,17 @@ const ManagePlans = () => {
           <h2 className="new-page-title mb-1">Corporate Plans Management</h2>
           <p className="text-muted small mb-0">Create, edit, and manage corporate subscription plans</p>
         </div>
-        <button className="btn btn-danger fw-bold rounded-pill px-4 shadow-sm" onClick={openCreateModal}>
-          <i className="bi bi-plus-lg me-2"></i>Create New Plan
-        </button>
+        <div className="d-flex gap-2">
+          <button 
+            className="btn btn-outline-secondary fw-bold rounded-pill px-4 shadow-sm" 
+            onClick={() => window.open('/corporate/choose-plan', '_blank')}
+          >
+            <i className="bi bi-box-arrow-up-right me-2"></i>View Live Portal
+          </button>
+          <button className="btn btn-danger fw-bold rounded-pill px-4 shadow-sm" onClick={openCreateModal}>
+            <i className="bi bi-plus-lg me-2"></i>Create New Plan
+          </button>
+        </div>
       </div>
 
       {/* Action Messages */}
@@ -181,93 +189,69 @@ const ManagePlans = () => {
           </button>
         </div>
       ) : (
-        <div className="row g-4">
+        <div className="corp-plans-grid" style={{ gridTemplateColumns: `repeat(${Math.min(plans.length, 4)}, 1fr)` }}>
           {plans.map((plan) => (
-            <div key={plan.id} className="col-lg-3 col-md-6">
-              <div
-                className="bg-white rounded-4 shadow-sm overflow-hidden h-100 d-flex flex-column position-relative"
-                style={{
-                  border: plan.recommended ? `2px solid ${plan.color}` : '1px solid #e5e7eb',
-                  opacity: plan.active ? 1 : 0.6,
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                {/* Recommended Banner */}
-                {plan.recommended && (
-                  <div className="text-center py-2 text-white fw-bold small" style={{ background: plan.color, letterSpacing: '1.5px', fontSize: '0.7rem' }}>
-                    <i className="bi bi-star-fill me-1"></i> RECOMMENDED
-                  </div>
+            <div 
+              key={plan.id} 
+              className={`corp-plan-card ${plan.recommended ? 'corp-recommended' : ''}`}
+              style={{ opacity: plan.active ? 1 : 0.6 }}
+            >
+              {plan.recommended && (
+                <div className="corp-recommended-banner">
+                  <i className="bi bi-star-fill"></i> MOST POPULAR
+                </div>
+              )}
+              <div className="corp-plan-card-header" style={{ borderColor: plan.color }}>
+                <div className="corp-plan-icon" style={{ background: plan.color }}>
+                  <i className={`bi ${plan.icon}`}></i>
+                </div>
+                <div className="d-flex justify-content-between align-items-center w-100">
+                  <h3 className="corp-plan-name mb-0">{plan.name}</h3>
+                  {!plan.active && <span className="badge bg-secondary" style={{ fontSize: '0.6rem' }}>INACTIVE</span>}
+                </div>
+                {plan.description && (
+                  <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '12px', lineHeight: 1.4, marginTop: '8px' }}>{plan.description}</p>
                 )}
-
-                {/* Card Header */}
-                <div className="p-4 pb-3">
-                  <div className="d-flex align-items-center gap-3 mb-3">
-                    <div className="rounded-3 d-flex align-items-center justify-content-center" style={{ width: '44px', height: '44px', background: plan.color, color: '#fff', fontSize: '1.2rem' }}>
-                      <i className={`bi ${plan.icon}`}></i>
-                    </div>
-                    <div>
-                      <h6 className="mb-0 fw-black text-muted" style={{ fontSize: '0.78rem', letterSpacing: '1.5px' }}>{plan.name}</h6>
-                      <small className="text-muted" style={{ fontSize: '0.7rem' }}>Key: {plan.planKey}</small>
-                    </div>
-                    {!plan.active && <span className="badge bg-secondary ms-auto">INACTIVE</span>}
-                  </div>
-
-                  {/* Prices */}
-                  <div className="mb-3">
-                    <div className="d-flex align-items-baseline gap-1 mb-1">
-                      <span className="fw-black" style={{ fontSize: '1.8rem', lineHeight: 1 }}>₹{plan.priceMonthly?.toLocaleString()}</span>
-                      <span className="text-muted small">/mo</span>
-                    </div>
-                    <div className="d-flex gap-3 text-muted" style={{ fontSize: '0.72rem' }}>
-                      <span>₹{plan.priceQuarterly?.toLocaleString()}/qtr</span>
-                      <span>₹{plan.priceYearly?.toLocaleString()}/yr</span>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  {plan.description && (
-                    <p className="text-muted small mb-3" style={{ fontSize: '0.78rem', lineHeight: 1.5 }}>{plan.description}</p>
-                  )}
+                <div className="corp-plan-price mt-2">
+                  <span className="corp-price-currency">₹</span>
+                  <span className="corp-price-amount">{(plan.priceMonthly || 0).toLocaleString()}</span>
+                  <span className="corp-price-period">/mo</span>
                 </div>
-
-                {/* Features */}
-                <div className="px-4 pb-3 flex-grow-1">
-                  <h6 className="fw-bold small text-muted text-uppercase mb-2" style={{ fontSize: '0.68rem', letterSpacing: '1px' }}>Features</h6>
-                  <div className="d-flex flex-column gap-1">
-                    {(plan.features || []).map((f, idx) => (
-                      <div key={idx} className="d-flex align-items-center gap-2" style={{ fontSize: '0.8rem' }}>
-                        <i className="bi bi-check-circle-fill" style={{ color: plan.color, fontSize: '0.75rem' }}></i>
-                        <span className="text-dark">{f}</span>
-                      </div>
-                    ))}
+              </div>
+              
+              <div className="corp-plan-features">
+                {(plan.features || []).map((feature, idx) => (
+                  <div key={idx} className="corp-feature-item">
+                    <i className="bi bi-check-circle-fill" style={{ color: plan.color }}></i>
+                    <span>{feature}</span>
                   </div>
-                </div>
+                ))}
+              </div>
 
-                {/* Actions */}
-                <div className="p-3 border-top d-flex gap-2 flex-wrap">
-                  <button className="btn btn-sm btn-outline-primary rounded-pill fw-bold flex-grow-1" style={{ fontSize: '0.75rem' }} onClick={() => openEditModal(plan)}>
-                    <i className="bi bi-pencil me-1"></i>Edit
-                  </button>
-                  <button
-                    className={`btn btn-sm rounded-pill fw-bold ${plan.recommended ? 'btn-warning' : 'btn-outline-warning'}`}
-                    style={{ fontSize: '0.75rem' }}
-                    onClick={() => handleToggleRecommended(plan)}
-                    title={plan.recommended ? 'Remove Recommended' : 'Set as Recommended'}
-                  >
-                    <i className={`bi ${plan.recommended ? 'bi-star-fill' : 'bi-star'}`}></i>
-                  </button>
-                  <button
-                    className={`btn btn-sm rounded-pill fw-bold ${plan.active ? 'btn-outline-success' : 'btn-success'}`}
-                    style={{ fontSize: '0.75rem' }}
-                    onClick={() => handleToggleActive(plan)}
-                    title={plan.active ? 'Deactivate' : 'Activate'}
-                  >
-                    <i className={`bi ${plan.active ? 'bi-eye-fill' : 'bi-eye-slash'}`}></i>
-                  </button>
-                  <button className="btn btn-sm btn-outline-danger rounded-pill fw-bold" style={{ fontSize: '0.75rem' }} onClick={() => handleDelete(plan)}>
-                    <i className="bi bi-trash3"></i>
-                  </button>
-                </div>
+              {/* Admin Actions Container */}
+              <div className="p-3 border-top mt-auto d-flex gap-2 flex-wrap" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                <button className="btn btn-sm btn-outline-primary rounded-pill fw-bold flex-grow-1" style={{ fontSize: '0.75rem' }} onClick={() => openEditModal(plan)}>
+                  <i className="bi bi-pencil me-1"></i>Edit
+                </button>
+                <button
+                  className={`btn btn-sm rounded-pill fw-bold ${plan.recommended ? 'btn-warning' : 'btn-outline-warning'}`}
+                  style={{ fontSize: '0.75rem' }}
+                  onClick={() => handleToggleRecommended(plan)}
+                  title={plan.recommended ? 'Remove Recommended' : 'Set as Recommended'}
+                >
+                  <i className={`bi ${plan.recommended ? 'bi-star-fill' : 'bi-star'}`}></i>
+                </button>
+                <button
+                  className={`btn btn-sm rounded-pill fw-bold ${plan.active ? 'btn-outline-success' : 'btn-success'}`}
+                  style={{ fontSize: '0.75rem' }}
+                  onClick={() => handleToggleActive(plan)}
+                  title={plan.active ? 'Deactivate' : 'Activate'}
+                >
+                  <i className={`bi ${plan.active ? 'bi-eye-fill' : 'bi-eye-slash'}`}></i>
+                </button>
+                <button className="btn btn-sm btn-outline-danger rounded-pill fw-bold" style={{ fontSize: '0.75rem' }} onClick={() => handleDelete(plan)}>
+                  <i className="bi bi-trash3"></i>
+                </button>
               </div>
             </div>
           ))}
@@ -448,6 +432,103 @@ const ManagePlans = () => {
           </div>
         </div>
       )}
+
+      {/* Embedded CSS for the Corporate Plans UI in Superadmin */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .corp-plans-grid {
+          display: grid;
+          gap: 24px;
+          margin: 0 auto;
+          position: relative;
+          z-index: 2;
+        }
+        @media (max-width: 1100px) { .corp-plans-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+        @media (max-width: 600px) { .corp-plans-grid { grid-template-columns: 1fr !important; max-width: 400px; } }
+
+        .corp-plan-card {
+          background: #1e293b;
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 20px;
+          padding: 0;
+          display: flex;
+          flex-direction: column;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          overflow: hidden;
+          position: relative;
+        }
+        .corp-plan-card:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+          border-color: rgba(255,255,255,0.15);
+        }
+        .corp-recommended {
+          border-color: rgba(139, 92, 246, 0.4);
+          box-shadow: 0 0 30px rgba(139, 92, 246, 0.15);
+        }
+        .corp-recommended-banner {
+          background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+          color: #fff;
+          text-align: center;
+          padding: 8px;
+          font-size: 0.7rem;
+          font-weight: 800;
+          letter-spacing: 2px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+        }
+        .corp-plan-card-header {
+          padding: 28px 24px 20px;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .corp-plan-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.3rem;
+          color: #fff;
+          margin-bottom: 16px;
+        }
+        .corp-plan-name {
+          font-size: 0.85rem;
+          font-weight: 800;
+          letter-spacing: 1.5px;
+          color: #94a3b8;
+          text-transform: uppercase;
+        }
+        .corp-plan-price { display: flex; align-items: baseline; gap: 2px; }
+        .corp-price-currency { font-size: 1.2rem; font-weight: 700; color: #f8fafc; }
+        .corp-price-amount { font-size: 2.2rem; font-weight: 900; color: #f8fafc; line-height: 1; }
+        .corp-price-period { font-size: 0.8rem; color: #64748b; margin-left: 4px; }
+
+        .corp-plan-features {
+          padding: 20px 24px;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .corp-feature-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 0.82rem;
+          color: #cbd5e1;
+          font-weight: 500;
+        }
+        .corp-feature-item i { font-size: 0.85rem; flex-shrink: 0; }
+        
+        .admin-light-page .corp-plan-card .btn-outline-primary {
+          color: #3b82f6; border-color: #3b82f6;
+        }
+        .admin-light-page .corp-plan-card .btn-outline-primary:hover {
+          background: #3b82f6; color: white;
+        }
+      `}} />
     </div>
   );
 };

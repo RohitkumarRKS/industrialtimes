@@ -3,15 +3,34 @@ import { useLocation, Link } from 'react-router-dom';
 import { Container, Row, Col, Spinner, Badge } from 'react-bootstrap';
 import { Helmet } from 'react-helmet-async';
 import Advertisement from '../components/Advertisement';
+import MobileStickyAd from '../components/MobileStickyAd';
 import API_BASE from '../config/api';
 
 const SearchPage = () => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(8);
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const query = searchParams.get('q');
   const dateQuery = searchParams.get('date');
+
+  useEffect(() => {
+    setVisibleCount(8);
+  }, [query, dateQuery]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 150) {
+        setVisibleCount((prev) => {
+          if (prev >= results.length) return prev;
+          return prev + 6;
+        });
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [results.length]);
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -48,7 +67,7 @@ const SearchPage = () => {
   const displayTitle = query ? `Showing results for: "${query}"` : dateQuery ? `News for: ${new Date(dateQuery).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'Search Results';
 
   return (
-    <Container fluid="xl" className="py-5 reveal">
+    <Container fluid className="px-md-4 px-xl-5 py-4 reveal">
       <Helmet>
         <title>{query ? `Search: ${query}` : dateQuery ? `News: ${dateQuery}` : 'Search'} | Industrial Times</title>
       </Helmet>
@@ -56,7 +75,7 @@ const SearchPage = () => {
       <Row className="g-4">
         {/* Left Sidebar Ad */}
         <Col xl={2} lg={2} className="d-none d-lg-block">
-          <div className="sticky-top" style={{ top: '80px' }}>
+          <div className="sticky-top" style={{ top: '135px' }}>
             <Advertisement slot="left-skyscraper" />
           </div>
         </Col>
@@ -75,7 +94,7 @@ const SearchPage = () => {
             </div>
           ) : results.length > 0 ? (
             <Row className="g-4">
-              {results.map(article => (
+              {results.slice(0, visibleCount).map(article => (
                 <Col md={6} key={article.id}>
                   <div className="search-result-card h-100 hover-lift shadow-sm p-3 bg-white rounded-4 border">
                     <div className="img-wrapper mb-3 rounded-3 overflow-hidden" style={{ height: '180px' }}>
@@ -100,15 +119,30 @@ const SearchPage = () => {
               <Link to="/" className="btn btn-danger rounded-pill px-4 mt-2">Back to Home</Link>
             </div>
           )}
+
+          {visibleCount < results.length && (
+            <div className="text-center mt-2 mb-4 py-3">
+              <Spinner animation="border" size="sm" variant="danger" className="me-2" />
+              <span className="text-muted small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>Loading more news...</span>
+            </div>
+          )}
+
+          {/* MOBILE AD — 300×250 */}
+          <div className="ad-mobile-only mobile-ad-row">
+            <Advertisement slot="mobile-rectangle" />
+          </div>
         </Col>
 
         {/* Right Sidebar Ad */}
         <Col xl={3} lg={3} className="d-none d-lg-block">
-          <div className="sticky-top" style={{ top: '80px' }}>
+          <div className="sticky-top" style={{ top: '135px' }}>
             <Advertisement slot="right-half-page" />
           </div>
         </Col>
       </Row>
+
+      {/* MOBILE STICKY BOTTOM BANNER — 320×50 */}
+      <MobileStickyAd />
     </Container>
   );
 };

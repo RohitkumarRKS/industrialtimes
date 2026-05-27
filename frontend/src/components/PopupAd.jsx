@@ -20,9 +20,14 @@ const PopupAd = () => {
     }
     const fetchPopupAd = async () => {
       try {
-        const { data } = await axios.get(`${API_BASE}/api/ads`);
+        const state = sessionStorage.getItem('detectedState') || '';
+        const city = sessionStorage.getItem('detectedCity') || '';
+        const params = new URLSearchParams();
+        if (state) params.append('state', state);
+        if (city) params.append('city', city);
+        const { data } = await axios.get(`${API_BASE}/api/ads?${params}`);
         // Find global popup ad or first active popup
-        const popupAd = data.find(a => a.type === 'popup' && a.active);
+        const popupAd = data.find(a => (a.type === 'popup' || a.slot === 'popup') && a.active);
         if (popupAd) {
           setAd(popupAd);
           setShow(true);

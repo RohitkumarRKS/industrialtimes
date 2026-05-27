@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const PodcastGuest = require('../models/PodcastGuest');
 const PodcastFormField = require('../models/PodcastFormField');
+const PodcastEpisode = require('../models/PodcastEpisode');
 const EmailLog = require('../models/EmailLog');
 const EmailSettings = require('../models/EmailSettings');
 const nodemailer = require('nodemailer');
@@ -57,8 +58,6 @@ const createPDFBuffer = (guest) => {
       doc.fillColor('#333333').text('Phone: ', { continued: true }).fillColor('#000000').text(guest.phone);
       doc.moveDown(0.5);
       doc.fillColor('#333333').text('Website: ', { continued: true }).fillColor('#000000').text(guest.website || 'N/A');
-      doc.moveDown(0.5);
-      doc.fillColor('#333333').text('Earliest Availability: ', { continued: true }).fillColor('#000000').text(guest.earliestAvailability);
       doc.moveDown(1.5);
 
       if (guest.customData && Object.keys(guest.customData).length > 0) {
@@ -127,10 +126,6 @@ const sendAdminEmail = async (guest) => {
             <td style="padding: 12px 0; color: #6b7280; font-weight: 600;">Website</td>
             <td style="padding: 12px 0; color: #111827;">${guest.website || 'N/A'}</td>
           </tr>
-          <tr style="border-bottom: 1px solid #f3f4f6;">
-            <td style="padding: 12px 0; color: #6b7280; font-weight: 600;">Availability</td>
-            <td style="padding: 12px 0; color: #111827; font-weight: 700;">${guest.earliestAvailability}</td>
-          </tr>
           ${guest.customData ? Object.entries(guest.customData).map(([k, v]) => `
           <tr style="border-bottom: 1px solid #f3f4f6;">
             <td style="padding: 12px 0; color: #6b7280; font-weight: 600;">${k}</td>
@@ -188,7 +183,6 @@ const sendAdminEmail = async (guest) => {
     console.log(`   Name:  ${guest.firstName} ${guest.lastName}`);
     console.log(`   Email: ${guest.email}`);
     console.log(`   Phone: ${guest.phone}`);
-    console.log(`   Avail: ${guest.earliestAvailability}`);
     console.log('──────────────────────────────────────────');
   }
 };
@@ -258,10 +252,10 @@ const sendUserConfirmationEmail = async (guest) => {
 // ═══════════════════════════════════════
 router.post('/', async (req, res) => {
   try {
-    const { firstName, lastName, email, phone, website, background, earliestAvailability, customData } = req.body;
+    const { firstName, lastName, email, phone, website, background, customData } = req.body;
 
     // Basic validation
-    if (!firstName || !lastName || !email || !phone || !background || !earliestAvailability) {
+    if (!firstName || !lastName || !email || !phone || !background) {
       return res.status(400).json({ error: 'All required fields must be filled.' });
     }
 
@@ -272,7 +266,6 @@ router.post('/', async (req, res) => {
       phone: phone.trim(),
       website: website ? website.trim() : '',
       background: background.trim(),
-      earliestAvailability,
       customData: customData || {}
     });
 
@@ -470,6 +463,95 @@ router.post('/:id/reply', async (req, res) => {
     } catch (e) { }
     
     res.status(500).json({ error: 'Failed to send reply. Please check SMTP settings.' });
+  }
+});
+
+// ═══════════════════════════════════════
+//  PUBLIC: Get all active podcast episodes
+// ═══════════════════════════════════════
+router.get('/episodes', async (req, res) => {
+  try {
+    const episodes = await PodcastEpisode.findAll({
+      where: { active: true },
+      order: [['publishedAt', 'DESC']]
+    });
+    res.json(episodes);
+  } catch (err) {
+    console.error('Episode fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch episodes.' });
+  }
+});
+
+// ═══════════════════════════════════════
+//  ADMIN: Get all podcast episodes (including inactive)
+// ═══════════════════════════════════════
+router.get('/episodes/all', async (req, res) => {
+  try {
+    const episodes = await PodcastEpisode.findAll({
+      order: [['publishedAt', 'DESC']]
+    });
+    res.json(episodes);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch episodes.' });
+  }
+});
+
+// ═══════════════════════════════════════
+//  ADMIN: Create a new podcast episode
+// ═══════════════════════════════════════
+router.post('/episodes', async (req, res) => {
+  try {
+    const { title, description, thumbnailUrl, audioUrl, duration, guestName, episodeNumber, publishedAt } = req.body;
+    if (!title) return res.status(400).json({ error: 'Title is required.' });
+
+    const episode = await PodcastEpisode.create({
+      title: title.trim(),
+      description: (description || '').trim(),
+      thumbnailUrl: thumbnailUrl || '',
+      audioUrl: audioUrl || '',
+      duration: duration || '',
+      guestName: (guestName || '').trim(),
+      episodeNumber: episodeNumber || null,
+      publishedAt: publishedAt || new Date(),
+      active: true
+    });
+
+    res.status(201).json(episode);
+  } catch (err) {
+    console.error('Episode create error:', err);
+    res.status(500).json({ error: 'Failed to create episode.' });
+  }
+});
+
+// ═══════════════════════════════════════
+//  ADMIN: Update a podcast episode
+// ═══════════════════════════════════════
+router.put('/episodes/:id', async (req, res) => {
+  try {
+    const episode = await PodcastEpisode.findByPk(req.params.id);
+    if (!episode) return res.status(404).json({ error: 'Episode not found.' });
+
+    await episode.update(req.body);
+    res.json(episode);
+  } catch (err) {
+    console.error('Episode update error:', err);
+    res.status(500).json({ error: 'Failed to update episode.' });
+  }
+});
+
+// ═══════════════════════════════════════
+//  ADMIN: Delete a podcast episode
+// ═══════════════════════════════════════
+router.delete('/episodes/:id', async (req, res) => {
+  try {
+    const episode = await PodcastEpisode.findByPk(req.params.id);
+    if (!episode) return res.status(404).json({ error: 'Episode not found.' });
+
+    await episode.destroy();
+    res.json({ message: 'Episode deleted successfully.' });
+  } catch (err) {
+    console.error('Episode delete error:', err);
+    res.status(500).json({ error: 'Failed to delete episode.' });
   }
 });
 

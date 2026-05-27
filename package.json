@@ -6,7 +6,7 @@
     "postinstall": "cd frontend && npm install && cd ../backend && npm install --build-from-source=sqlite3 && cd ../frontend && npm run build",
     "start": "node backend/server.js",
     "build": "cd frontend && npm install && cd ../backend && npm install --build-from-source=sqlite3 && cd ../frontend && npm run build",
-    "dev": "npm run dev --prefix frontend & node backend/server.js",
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
     "frontend": "npm run dev --prefix frontend",
     "backend": "node backend/server.js",
     "seed": "node backend/seed.js",
@@ -14,5 +14,8 @@
   },
   "engines": {
     "node": "20.x"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }

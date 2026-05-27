@@ -25,12 +25,26 @@ const ManageAdRequests = () => {
 
   const handleApprove = async (id) => {
     try {
-      await axios.patch(`${API_BASE}/api/ad-requests/${id}/approve`, { adminNotes: 'Approved and published' }, config);
+      await axios.patch(`${API_BASE}/api/ad-requests/${id}/approve`, { adminNotes: rejectNotes[id] || 'Approved and published' }, config);
       setActionMsg({ text: '✅ Ad request approved and published live!', type: 'success' });
       fetchRequests();
+      setRejectNotes({ ...rejectNotes, [id]: '' });
       setTimeout(() => setActionMsg({ text: '', type: '' }), 4000);
     } catch (err) {
       setActionMsg({ text: 'Failed to approve', type: 'danger' });
+    }
+  };
+
+  const handleRevoke = async (id) => {
+    if (!window.confirm("Are you sure you want to disable and remove this ad?")) return;
+    try {
+      await axios.patch(`${API_BASE}/api/ad-requests/${id}/revoke`, { adminNotes: rejectNotes[id] || 'Disabled by admin' }, config);
+      setActionMsg({ text: 'Ad request disabled.', type: 'warning' });
+      fetchRequests();
+      setRejectNotes({ ...rejectNotes, [id]: '' });
+      setTimeout(() => setActionMsg({ text: '', type: '' }), 4000);
+    } catch (err) {
+      setActionMsg({ text: 'Failed to revoke', type: 'danger' });
     }
   };
 
@@ -101,6 +115,8 @@ const ManageAdRequests = () => {
                     <span><i className="bi bi-envelope me-1"></i>{req.contactEmail}</span>
                     <span><i className="bi bi-layout-text-window me-1"></i>{SLOT_LABELS[req.slot] || req.slot}</span>
                     <span><i className="bi bi-clock me-1"></i>{req.duration}</span>
+                    {req.targetState && <span><i className="bi bi-geo-alt-fill me-1"></i>{req.targetCity ? `${req.targetCity}, ${req.targetState}` : req.targetState}</span>}
+                    {req.startDate && <span><i className="bi bi-calendar-range me-1"></i>{req.startDate} → {req.endDate}</span>}
                     {req.budget && <span><i className="bi bi-currency-rupee me-1"></i>{req.budget}</span>}
                     <span><i className="bi bi-calendar3 me-1"></i>{new Date(req.createdAt).toLocaleDateString()}</span>
                   </div>
@@ -126,9 +142,21 @@ const ManageAdRequests = () => {
               )}
 
               {/* Admin Notes for processed */}
-              {req.status !== 'pending' && req.adminNotes && (
-                <div style={{ marginTop: '0.8rem', padding: '8px 14px', borderRadius: '8px', background: '#f9fafb', fontSize: '0.8rem', color: '#6b7280' }}>
-                  <i className="bi bi-chat-left-text me-1"></i> <strong>Admin:</strong> {req.adminNotes}
+              {req.status !== 'pending' && (
+                <div style={{ marginTop: '0.8rem' }}>
+                  {req.adminNotes && (
+                    <div style={{ padding: '8px 14px', borderRadius: '8px', background: '#f9fafb', fontSize: '0.8rem', color: '#6b7280', marginBottom: req.status === 'approved' ? '10px' : 0 }}>
+                      <i className="bi bi-chat-left-text me-1"></i> <strong>Admin:</strong> {req.adminNotes}
+                    </div>
+                  )}
+                  {req.status === 'approved' && (
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <input type="text" placeholder="Reason to disable (optional)" value={rejectNotes[req.id] || ''} onChange={e => setRejectNotes({ ...rejectNotes, [req.id]: e.target.value })} style={{ flex: 1, minWidth: '200px', padding: '6px 12px', borderRadius: '6px', border: '1px solid #e5e7eb', fontSize: '0.75rem' }} />
+                      <button onClick={() => handleRevoke(req.id)} style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#dc2626', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}>
+                        <i className="bi bi-x-circle me-1"></i>Disable & Remove Ad
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

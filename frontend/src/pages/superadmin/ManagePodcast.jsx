@@ -20,6 +20,23 @@ const ManagePodcast = () => {
   const [newField, setNewField] = useState({ name: '', label: '', type: 'text', required: false, options: '' });
   const [loadingFields, setLoadingFields] = useState(false);
 
+  // Page Settings state
+  const [pageSettings, setPageSettings] = useState({ podcastHeaderTitle: '', podcastHeaderDescription: '' });
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  // Episode Management state
+  const [episodes, setEpisodes] = useState([]);
+  const [loadingEpisodes, setLoadingEpisodes] = useState(false);
+  const [savingEpisode, setSavingEpisode] = useState(false);
+  const [newEpisode, setNewEpisode] = useState({
+    title: '', description: '', thumbnailUrl: '', audioUrl: '',
+    duration: '', guestName: '', episodeNumber: '', publishedAt: ''
+  });
+  const [uploadingThumb, setUploadingThumb] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoSourceType, setVideoSourceType] = useState('upload'); // 'upload' or 'url'
+
   const podcastApplyUrl = `${window.location.origin}/podcast-apply`;
 
   const fetchGuests = async () => {
@@ -45,9 +62,91 @@ const ManagePodcast = () => {
     }
   };
 
+  const fetchSettings = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/settings/seo`);
+      setPageSettings({
+        podcastHeaderTitle: res.data.podcastHeaderTitle || '',
+        podcastHeaderDescription: res.data.podcastHeaderDescription || ''
+      });
+    } catch (err) {
+      console.error("Error fetching settings", err);
+    }
+  };
+
+  const fetchEpisodes = async () => {
+    try {
+      setLoadingEpisodes(true);
+      const res = await axios.get(`${API_BASE}/api/podcast/episodes/all`);
+      setEpisodes(res.data || []);
+    } catch (err) {
+      console.error('Error fetching episodes:', err);
+    } finally {
+      setLoadingEpisodes(false);
+    }
+  };
+
+  const handleCreateEpisode = async (e) => {
+    e.preventDefault();
+    setSavingEpisode(true);
+    try {
+      await axios.post(`${API_BASE}/api/podcast/episodes`, {
+        ...newEpisode,
+        episodeNumber: newEpisode.episodeNumber ? parseInt(newEpisode.episodeNumber) : null,
+        publishedAt: newEpisode.publishedAt || new Date().toISOString()
+      });
+      setNewEpisode({ title: '', description: '', thumbnailUrl: '', audioUrl: '', duration: '', guestName: '', episodeNumber: '', publishedAt: '' });
+      fetchEpisodes();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to create episode');
+    } finally {
+      setSavingEpisode(false);
+    }
+  };
+
+  const handleDeleteEpisode = async (id) => {
+    if (window.confirm('Delete this episode?')) {
+      try {
+        await axios.delete(`${API_BASE}/api/podcast/episodes/${id}`);
+        fetchEpisodes();
+      } catch (err) {
+        alert('Failed to delete episode');
+      }
+    }
+  };
+
+  const handleToggleEpisode = async (ep) => {
+    try {
+      await axios.put(`${API_BASE}/api/podcast/episodes/${ep.id}`, { active: !ep.active });
+      fetchEpisodes();
+    } catch (err) {
+      alert('Failed to toggle episode');
+    }
+  };
+
+  const handleThumbUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingThumb(true);
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const { data } = await axios.post(`${API_BASE}/api/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setNewEpisode(prev => ({ ...prev, thumbnailUrl: data.imageUrl }));
+    } catch (err) {
+      alert('Failed to upload thumbnail');
+    } finally {
+      setUploadingThumb(false);
+    }
+  };
+
   useEffect(() => {
     fetchGuests();
     fetchFields();
+    fetchSettings();
+    fetchEpisodes();
   }, []);
 
   const handleStatusUpdate = async (id, status) => {
@@ -67,6 +166,19 @@ const ManagePodcast = () => {
       } catch (err) {
         alert('Failed to delete registration');
       }
+    }
+  };
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    try {
+      await axios.put(`${API_BASE}/api/settings/seo`, pageSettings);
+      alert('Page settings saved successfully!');
+    } catch (err) {
+      alert('Failed to save page settings');
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -212,7 +324,6 @@ const ManagePodcast = () => {
                 <tr>
                   <th className="border-0 px-4 py-3 small text-uppercase fw-bold">Guest Name</th>
                   <th className="border-0 py-3 small text-uppercase fw-bold">Contact Info</th>
-                  <th className="border-0 py-3 small text-uppercase fw-bold">Availability</th>
                   <th className="border-0 py-3 small text-uppercase fw-bold">Status</th>
                   <th className="border-0 px-4 py-3 small text-uppercase fw-bold text-end">Actions</th>
                 </tr>
@@ -228,9 +339,6 @@ const ManagePodcast = () => {
                       <td>
                         <div className="small"><i className="bi bi-envelope-fill text-danger me-1"></i> {guest.email}</div>
                         <div className="small"><i className="bi bi-telephone-fill text-muted me-1"></i> {guest.phone}</div>
-                      </td>
-                      <td className="small fw-bold">
-                        {new Date(guest.earliestAvailability).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
                       <td>{getStatusBadge(guest.status)}</td>
                       <td className="px-4 text-end">
@@ -350,6 +458,222 @@ const ManagePodcast = () => {
             </Col>
           </Row>
         </Tab>
+
+        <Tab eventKey="settings" title="Page Settings">
+          <Card className="border-0 shadow-sm rounded-4 mb-4" style={{ maxWidth: '800px' }}>
+            <Card.Header className="bg-white border-bottom-0 pt-4 pb-0">
+              <h5 className="fw-black mb-0">Public Page Configuration</h5>
+              <p className="text-muted small">Update the text that appears at the top of the podcast application page.</p>
+            </Card.Header>
+            <Card.Body>
+              <Form onSubmit={handleSaveSettings}>
+                <Form.Group className="mb-4">
+                  <Form.Label className="fw-bold">Main Heading Title</Form.Label>
+                  <Form.Control 
+                    type="text" 
+                    size="lg"
+                    value={pageSettings.podcastHeaderTitle} 
+                    onChange={(e) => setPageSettings({...pageSettings, podcastHeaderTitle: e.target.value})} 
+                    placeholder="e.g. Podcast Guest Application"
+                    required
+                  />
+                </Form.Group>
+                <Form.Group className="mb-4">
+                  <Form.Label className="fw-bold">Welcome Description</Form.Label>
+                  <Form.Control 
+                    as="textarea" 
+                    rows={4}
+                    value={pageSettings.podcastHeaderDescription} 
+                    onChange={(e) => setPageSettings({...pageSettings, podcastHeaderDescription: e.target.value})} 
+                    placeholder="Describe what guests can expect..."
+                    required
+                  />
+                </Form.Group>
+                <Button variant="danger" type="submit" className="px-4 py-2 rounded-pill fw-bold" disabled={savingSettings}>
+                  {savingSettings ? 'Saving...' : 'Save Page Settings'}
+                </Button>
+              </Form>
+            </Card.Body>
+          </Card>
+        </Tab>
+
+        <Tab eventKey="episodes" title="Manage Episodes">
+          <Row>
+            <Col lg={5}>
+              <Card className="border-0 shadow-sm rounded-4 mb-4">
+                <Card.Header className="bg-white border-bottom-0 pt-4 pb-0">
+                  <h5 className="fw-black mb-0"><i className="bi bi-plus-circle me-2"></i>Upload New Episode</h5>
+                  <p className="text-muted small">Add a podcast episode to display on the landing page.</p>
+                </Card.Header>
+                <Card.Body>
+                  <Form onSubmit={handleCreateEpisode}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="small fw-bold">Episode Title *</Form.Label>
+                      <Form.Control type="text" required placeholder="e.g. Future of Manufacturing" value={newEpisode.title} onChange={(e) => setNewEpisode({...newEpisode, title: e.target.value})} />
+                    </Form.Group>
+                    <Row className="mb-3">
+                      <Form.Group as={Col} md={6}>
+                        <Form.Label className="small fw-bold">Episode Number</Form.Label>
+                        <Form.Control type="number" placeholder="e.g. 12" value={newEpisode.episodeNumber} onChange={(e) => setNewEpisode({...newEpisode, episodeNumber: e.target.value})} />
+                      </Form.Group>
+                      <Form.Group as={Col} md={6}>
+                        <Form.Label className="small fw-bold">Duration</Form.Label>
+                        <Form.Control type="text" placeholder="e.g. 45 min" value={newEpisode.duration} onChange={(e) => setNewEpisode({...newEpisode, duration: e.target.value})} />
+                      </Form.Group>
+                    </Row>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="small fw-bold">Guest Name</Form.Label>
+                      <Form.Control type="text" placeholder="Guest speaker name" value={newEpisode.guestName} onChange={(e) => setNewEpisode({...newEpisode, guestName: e.target.value})} />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="small fw-bold">Description</Form.Label>
+                      <Form.Control as="textarea" rows={3} placeholder="Short episode description..." value={newEpisode.description} onChange={(e) => setNewEpisode({...newEpisode, description: e.target.value})} />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="small fw-bold">Thumbnail Image</Form.Label>
+                      <Form.Control type="file" accept="image/*" onChange={handleThumbUpload} />
+                      {uploadingThumb && <div className="mt-2"><Spinner size="sm" animation="border" variant="danger" /> Uploading...</div>}
+                      {newEpisode.thumbnailUrl && (
+                        <div className="mt-2">
+                          <img src={newEpisode.thumbnailUrl} alt="Preview" style={{ height: '80px', borderRadius: '8px', objectFit: 'cover' }} />
+                        </div>
+                      )}
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="small fw-bold">Video / Audio Source</Form.Label>
+                      <div className="d-flex gap-2 mb-2">
+                        <Button 
+                          variant={videoSourceType === 'upload' ? 'danger' : 'outline-secondary'} 
+                          size="sm" 
+                          className="rounded-pill fw-bold"
+                          onClick={() => setVideoSourceType('upload')}
+                        >
+                          <i className="bi bi-cloud-arrow-up me-1"></i>Upload from Device
+                        </Button>
+                        <Button 
+                          variant={videoSourceType === 'url' ? 'danger' : 'outline-secondary'} 
+                          size="sm" 
+                          className="rounded-pill fw-bold"
+                          onClick={() => setVideoSourceType('url')}
+                        >
+                          <i className="bi bi-link-45deg me-1"></i>External URL
+                        </Button>
+                      </div>
+                      {videoSourceType === 'upload' ? (
+                        <>
+                          <Form.Control 
+                            type="file" 
+                            accept="video/*" 
+                            onChange={async (e) => {
+                              const file = e.target.files[0];
+                              if (!file) return;
+                              setUploadingVideo(true);
+                              setVideoUploadProgress(0);
+                              const formData = new FormData();
+                              formData.append('video', file);
+                              try {
+                                const { data } = await axios.post(`${API_BASE}/api/upload/video`, formData, {
+                                  headers: { 'Content-Type': 'multipart/form-data' },
+                                  onUploadProgress: (progressEvent) => {
+                                    const pct = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                                    setVideoUploadProgress(pct);
+                                  }
+                                });
+                                setNewEpisode(prev => ({ ...prev, audioUrl: data.videoUrl }));
+                              } catch (err) {
+                                alert('Failed to upload video. Max size: 500MB.');
+                              } finally {
+                                setUploadingVideo(false);
+                              }
+                            }}
+                          />
+                          {uploadingVideo && (
+                            <div className="mt-2">
+                              <div className="progress" style={{ height: '6px' }}>
+                                <div className="progress-bar bg-danger" style={{ width: `${videoUploadProgress}%` }}></div>
+                              </div>
+                              <small className="text-muted">{videoUploadProgress}% uploaded...</small>
+                            </div>
+                          )}
+                          {!uploadingVideo && newEpisode.audioUrl && newEpisode.audioUrl.startsWith('/uploads/') && (
+                            <div className="mt-2 d-flex align-items-center gap-2">
+                              <i className="bi bi-check-circle-fill text-success"></i>
+                              <small className="text-success fw-bold">Video uploaded successfully</small>
+                            </div>
+                          )}
+                          <Form.Text className="text-muted">Upload MP4, WebM, MOV (max 500MB)</Form.Text>
+                        </>
+                      ) : (
+                        <>
+                          <Form.Control 
+                            type="url" 
+                            placeholder="YouTube, Spotify, or audio link" 
+                            value={newEpisode.audioUrl} 
+                            onChange={(e) => setNewEpisode({...newEpisode, audioUrl: e.target.value})} 
+                          />
+                          <Form.Text className="text-muted">Paste external link (YouTube, Spotify, etc.)</Form.Text>
+                        </>
+                      )}
+                    </Form.Group>
+                    <Form.Group className="mb-4">
+                      <Form.Label className="small fw-bold">Published Date</Form.Label>
+                      <Form.Control type="date" value={newEpisode.publishedAt} onChange={(e) => setNewEpisode({...newEpisode, publishedAt: e.target.value})} />
+                    </Form.Group>
+                    <Button variant="danger" type="submit" className="w-100 rounded-pill fw-bold" disabled={savingEpisode}>
+                      {savingEpisode ? 'Uploading...' : <><i className="bi bi-cloud-upload me-2"></i>Publish Episode</>}
+                    </Button>
+                  </Form>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col lg={7}>
+              <div className="bg-white rounded-4 shadow-sm border p-4">
+                <h5 className="fw-black mb-3"><i className="bi bi-collection-play me-2"></i>Published Episodes ({episodes.length})</h5>
+                {loadingEpisodes ? (
+                  <div className="text-center py-4"><Spinner animation="border" variant="danger" /></div>
+                ) : episodes.length > 0 ? (
+                  <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                    {episodes.map(ep => (
+                      <div key={ep.id} className="d-flex gap-3 align-items-start p-3 mb-2 rounded-3 border" style={{ background: ep.active ? '#fff' : '#f8f9fa', opacity: ep.active ? 1 : 0.6 }}>
+                        <div style={{ width: '80px', height: '60px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, background: '#e2e8f0' }}>
+                          {ep.thumbnailUrl ? (
+                            <img src={ep.thumbnailUrl.startsWith('/') ? `${API_BASE}${ep.thumbnailUrl}` : ep.thumbnailUrl} alt={ep.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <div className="d-flex align-items-center justify-content-center h-100 text-muted"><i className="bi bi-mic-fill"></i></div>
+                          )}
+                        </div>
+                        <div className="flex-grow-1">
+                          <div className="fw-bold" style={{ fontSize: '0.9rem' }}>
+                            {ep.episodeNumber && <Badge bg="danger" className="me-2">EP {ep.episodeNumber}</Badge>}
+                            {ep.title}
+                          </div>
+                          <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                            {ep.guestName && <><i className="bi bi-person-fill text-danger me-1"></i>{ep.guestName} · </>}
+                            {ep.duration && <><i className="bi bi-clock me-1"></i>{ep.duration} · </>}
+                            {ep.publishedAt && new Date(ep.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </div>
+                        </div>
+                        <div className="d-flex gap-1">
+                          <Button variant={ep.active ? 'outline-success' : 'outline-secondary'} size="sm" onClick={() => handleToggleEpisode(ep)} title={ep.active ? 'Active' : 'Inactive'}>
+                            <i className={`bi ${ep.active ? 'bi-eye-fill' : 'bi-eye-slash'}`}></i>
+                          </Button>
+                          <Button variant="outline-danger" size="sm" onClick={() => handleDeleteEpisode(ep.id)}>
+                            <i className="bi bi-trash"></i>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-5 text-muted border border-dashed rounded-3">
+                    <i className="bi bi-mic display-6 d-block mb-3 opacity-25"></i>
+                    No episodes uploaded yet. Upload your first podcast episode.
+                  </div>
+                )}
+              </div>
+            </Col>
+          </Row>
+        </Tab>
       </Tabs>
 
       {/* Guest Details Modal */}
@@ -404,10 +728,6 @@ const ManagePodcast = () => {
               )}
 
               <div className="col-md-6 mt-4">
-                <label className="text-muted small text-uppercase fw-bold mb-1">Available From</label>
-                <div className="h6 fw-bold">{selectedGuest.earliestAvailability}</div>
-              </div>
-              <div className="col-md-6">
                 <label className="text-muted small text-uppercase fw-bold mb-1">Current Status</label>
                 <div>{getStatusBadge(selectedGuest.status)}</div>
               </div>

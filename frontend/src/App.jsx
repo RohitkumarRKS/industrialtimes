@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+import axios from 'axios';
+import API_BASE from './config/api';
 import Navigation from './components/Navigation';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -27,12 +30,19 @@ import CorporateLogin from './pages/corporate/CorporateLogin';
 import CorporatePayment from './pages/corporate/CorporatePayment';
 import ReporterDashboard from './pages/ReporterDashboard';
 import UserDashboard from './pages/UserDashboard';
+import { UtilityBoxLeft, UtilityBoxRight } from './components/HeaderUtilityBoxes';
+import BreakingNewsTicker from './components/BreakingNewsTicker';
 
 const PublicLayout = () => (
   <div className="d-flex flex-column min-vh-100">
     <Navigation />
-    <div className="container-fluid py-3 text-center" style={{ backgroundColor: '#f8f9fa' }}>
-      <Advertisement slot="leaderboard" />
+    <BreakingNewsTicker />
+    <div className="container-fluid py-3" style={{ backgroundColor: '#f8f9fa', borderBottom: '1px solid #eaeaea' }}>
+      <div className="header-fluid-container d-flex flex-column flex-lg-row justify-content-center align-items-center gap-4">
+        <UtilityBoxLeft />
+        <Advertisement slot="leaderboard" />
+        <UtilityBoxRight />
+      </div>
     </div>
     <main className="flex-grow-1">
       <Outlet />
@@ -49,8 +59,52 @@ const AdminLayout = () => (
 );
 
 function App() {
+  const [seoConfig, setSeoConfig] = useState({
+    siteTitle: 'Industrial Times',
+    metaDescription: 'Your reliable source for the latest industrial news and trends.',
+    metaKeywords: 'industry, news, manufacturing, trending',
+    googleAnalyticsId: ''
+  });
+
+  useEffect(() => {
+    const fetchSeo = async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/settings/seo`);
+        if (data) {
+          setSeoConfig({
+            siteTitle: data.siteTitle || seoConfig.siteTitle,
+            metaDescription: data.metaDescription || seoConfig.metaDescription,
+            metaKeywords: data.metaKeywords || seoConfig.metaKeywords,
+            googleAnalyticsId: data.googleAnalyticsId || ''
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load SEO configuration', err);
+      }
+    };
+    fetchSeo();
+  }, []);
+
   return (
     <Router>
+      <Helmet>
+        <title>{seoConfig.siteTitle}</title>
+        <meta name="description" content={seoConfig.metaDescription} />
+        <meta name="keywords" content={seoConfig.metaKeywords} />
+        {seoConfig.googleAnalyticsId && (
+          <script async src={`https://www.googletagmanager.com/gtag/js?id=${seoConfig.googleAnalyticsId}`}></script>
+        )}
+        {seoConfig.googleAnalyticsId && (
+          <script>
+            {`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${seoConfig.googleAnalyticsId}');
+            `}
+          </script>
+        )}
+      </Helmet>
       <Routes>
         {/* Full Screen Layout (Admin, Login, Signup) */}
         <Route element={<AdminLayout />}>
@@ -75,16 +129,27 @@ function App() {
         {/* Public/Standard Site Routes */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/regional" element={<AreaNews />} />
           <Route path="/area-news" element={<AreaNews />} />
+          <Route path="/news" element={<CategoryPage categoryOverride="News" />} />
           <Route path="/articles" element={<CategoryPage categoryOverride="Articles" />} />
-          <Route path="/interviews" element={<CategoryPage categoryOverride="Interviews" />} />
           <Route path="/trending" element={<CategoryPage categoryOverride="Trending" />} />
-          <Route path="/manufacturing" element={<CategoryPage categoryOverride="Manufacturing" />} />
+          <Route path="/oem" element={<CategoryPage categoryOverride="OEM" />} />
           <Route path="/automation" element={<CategoryPage categoryOverride="Automation" />} />
-          <Route path="/acquisitions" element={<CategoryPage categoryOverride="Acquisitions" />} />
+          <Route path="/interview" element={<CategoryPage categoryOverride="Interviews" />} />
+          <Route path="/interviews" element={<CategoryPage categoryOverride="Interviews" />} />
+          <Route path="/startup" element={<CategoryPage categoryOverride="Startups" />} />
           <Route path="/startups" element={<CategoryPage categoryOverride="Startups" />} />
+          <Route path="/business" element={<CategoryPage categoryOverride="Business" />} />
+          <Route path="/event" element={<CategoryPage categoryOverride="Events" />} />
           <Route path="/events" element={<CategoryPage categoryOverride="Events" />} />
+          <Route path="/video" element={<CategoryPage categoryOverride="Videos" />} />
           <Route path="/videos" element={<CategoryPage categoryOverride="Videos" />} />
+          <Route path="/entertainment" element={<CategoryPage categoryOverride="Entertainment" />} />
+          <Route path="/sports" element={<CategoryPage categoryOverride="Sports" />} />
+          <Route path="/education" element={<CategoryPage categoryOverride="Education" />} />
+          <Route path="/manufacturing" element={<CategoryPage categoryOverride="Manufacturing" />} />
+          <Route path="/acquisitions" element={<CategoryPage categoryOverride="Acquisitions" />} />
           <Route path="/mediakit" element={<CategoryPage categoryOverride="Media Kit" />} />
           <Route path="/magazine" element={<CategoryPage categoryOverride="Magazine" />} />
           <Route path="/article/:category/:title/:id" element={<ArticleDetail />} />
@@ -105,7 +170,7 @@ function App() {
           <Route path="/trending-article" element={<TrendingArticleDetail />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/favorites" element={<Favorites />} />
-          <Route path="/profile/:name" element={<AuthorProfile />} />
+          <Route path="/author/:id" element={<AuthorProfile />} />
           <Route path="/upgrade" element={<UpgradePlan />} />
           <Route path="/profile" element={<UserProfile />} />
           <Route path="*" element={<NotFound />} />

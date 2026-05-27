@@ -56,7 +56,56 @@ const Signup = () => {
   };
 
   return (
-    <div className={`auth-split-wrapper ${transitioning ? 'auth-transition-out' : ''} ${isSwiping ? 'auth-swipe-out' : 'auth-swipe-in'}`}>
+    <>
+      {/* Full Screen Pending Approval Popup */}
+      {success && isReporter && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(15, 23, 42, 0.95)', backdropFilter: 'blur(10px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, color: '#fff', padding: '2rem', textAlign: 'center'
+        }}>
+          <div style={{
+            background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+            padding: '3rem', borderRadius: '24px', maxWidth: '500px', width: '100%',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.1)'
+          }}>
+            <div style={{
+              width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(234, 179, 8, 0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem',
+              color: '#eab308', fontSize: '2.5rem'
+            }}>
+              <i className="bi bi-hourglass-split"></i>
+            </div>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '1rem', color: '#f8fafc' }}>
+              Application Submitted!
+            </h2>
+            <p style={{ fontSize: '1.1rem', color: '#cbd5e1', lineHeight: '1.6', marginBottom: '0.5rem' }}>
+              {success}
+            </p>
+            <p style={{ fontSize: '0.9rem', color: '#94a3b8', lineHeight: '1.5', marginBottom: '2rem' }}>
+              Our SuperAdmin will review your reporter application within <strong style={{ color: '#eab308' }}>24 hours</strong>. You will be able to login and access your dashboard once approved.
+            </p>
+            <button
+              onClick={() => navigate('/')}
+              style={{
+                background: '#10b981', color: '#fff', border: 'none', padding: '12px 32px',
+                borderRadius: '12px', fontSize: '1rem', fontWeight: '600', cursor: 'pointer',
+                transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+              }}
+              onMouseOver={(e) => e.target.style.background = '#059669'}
+              onMouseOut={(e) => e.target.style.background = '#10b981'}
+            >
+              Okay, I Understand
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className={`auth-split-wrapper ${transitioning ? 'auth-transition-out' : ''} ${isSwiping ? 'auth-swipe-out' : 'auth-swipe-in'}`}>
+        <Link to="/" className="auth-visit-site-btn">
+          <i className="bi bi-arrow-left"></i> Visit Website
+        </Link>
         {/* Left Branding Panel */}
         <div className="auth-split-left">
           <div className="auth-left-shapes">
@@ -68,18 +117,18 @@ const Signup = () => {
 
           <div className="auth-brand-content">
             <div className="auth-welcome-animated">
-              <span className="auth-welcome-letter" style={{animationDelay:'0s'}}>G</span>
-              <span className="auth-welcome-letter" style={{animationDelay:'0.06s'}}>e</span>
-              <span className="auth-welcome-letter" style={{animationDelay:'0.12s'}}>t</span>
+              <span className="auth-welcome-letter" style={{ animationDelay: '0s' }}>G</span>
+              <span className="auth-welcome-letter" style={{ animationDelay: '0.06s' }}>e</span>
+              <span className="auth-welcome-letter" style={{ animationDelay: '0.12s' }}>t</span>
               <span className="auth-welcome-space"></span>
-              <span className="auth-welcome-letter" style={{animationDelay:'0.22s'}}>S</span>
-              <span className="auth-welcome-letter" style={{animationDelay:'0.28s'}}>t</span>
-              <span className="auth-welcome-letter" style={{animationDelay:'0.34s'}}>a</span>
-              <span className="auth-welcome-letter" style={{animationDelay:'0.40s'}}>r</span>
-              <span className="auth-welcome-letter" style={{animationDelay:'0.46s'}}>t</span>
-              <span className="auth-welcome-letter" style={{animationDelay:'0.52s'}}>e</span>
-              <span className="auth-welcome-letter" style={{animationDelay:'0.58s'}}>d</span>
-              <span className="auth-welcome-letter auth-welcome-emoji" style={{animationDelay:'0.64s'}}>!</span>
+              <span className="auth-welcome-letter" style={{ animationDelay: '0.22s' }}>S</span>
+              <span className="auth-welcome-letter" style={{ animationDelay: '0.28s' }}>t</span>
+              <span className="auth-welcome-letter" style={{ animationDelay: '0.34s' }}>a</span>
+              <span className="auth-welcome-letter" style={{ animationDelay: '0.40s' }}>r</span>
+              <span className="auth-welcome-letter" style={{ animationDelay: '0.46s' }}>t</span>
+              <span className="auth-welcome-letter" style={{ animationDelay: '0.52s' }}>e</span>
+              <span className="auth-welcome-letter" style={{ animationDelay: '0.58s' }}>d</span>
+              <span className="auth-welcome-letter auth-welcome-emoji" style={{ animationDelay: '0.64s' }}>!</span>
             </div>
 
             <h2 className="auth-brand-tagline auth-hover-glow">
@@ -87,7 +136,7 @@ const Signup = () => {
               <span className="auth-wave">{isReporter ? '📝' : '🚀'}</span>
             </h2>
             <p className="auth-brand-desc auth-hover-slide">
-              {isReporter 
+              {isReporter
                 ? 'Apply to become an authorized reporter. Publish articles, build your portfolio, and reach millions of industry readers.'
                 : 'Get access to premium industrial reporting, manufacturing insights, and the latest technology trends.'
               }
@@ -143,7 +192,9 @@ const Signup = () => {
           <div className="auth-form-container auth-fade-in">
             <div className="auth-form-header">
               <div className="auth-form-logo-center mb-4">
-                <img src="/industrialtimes_white.png" alt="Industrial Times" className="auth-form-center-logo" style={{ height: '40px', width: 'auto' }} />
+                <Link to="/">
+                  <img src="/industrialtimes_white.png" alt="Industrial Times" className="auth-form-center-logo" style={{ width: '180px', maxWidth: '100%', height: 'auto' }} />
+                </Link>
               </div>
               <h2 className="auth-form-title">Create Account</h2>
               <p className="auth-form-subtitle">
@@ -152,27 +203,12 @@ const Signup = () => {
             </div>
 
             {error && <div className="auth-error-alert">{error}</div>}
-            {success && (
-              <div style={{
-                background: 'rgba(16, 185, 129, 0.12)',
-                color: '#10b981',
-                padding: '16px 18px',
-                borderRadius: '12px',
-                fontSize: '0.88rem',
-                marginBottom: '1rem',
-                border: '1px solid rgba(16, 185, 129, 0.25)',
-                lineHeight: 1.5,
-                fontWeight: 600
-              }}>
-                <i className="bi bi-check-circle-fill" style={{ marginRight: '8px' }}></i>
-                {success}
-              </div>
-            )}
+
 
             <form onSubmit={handleSubmit} className="auth-form">
               {/* Role Selection - Prominent Cards */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1rem' }}>
-                <div 
+                <div
                   onClick={() => { setFormData({ ...formData, role: 'user' }); setError(''); setSuccess(''); }}
                   style={{
                     padding: '14px',
@@ -188,7 +224,7 @@ const Signup = () => {
                   <span style={{ fontWeight: 700, fontSize: '0.85rem', color: formData.role === 'user' ? '#3b82f6' : '#94a3b8' }}>Reader</span>
                   <p style={{ fontSize: '0.65rem', color: '#64748b', marginBottom: 0, marginTop: '4px' }}>Read articles & news</p>
                 </div>
-                <div 
+                <div
                   onClick={() => { setFormData({ ...formData, role: 'author' }); setError(''); setSuccess(''); }}
                   style={{
                     padding: '14px',
@@ -227,7 +263,7 @@ const Signup = () => {
                   type="email"
                   name="email"
                   autoComplete="username"
-                  placeholder="name@company.com"
+                  placeholder="Email Id"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
@@ -237,11 +273,13 @@ const Signup = () => {
 
               <div className="auth-input-group auth-hover-input">
                 <i className="bi bi-lock auth-input-icon"></i>
+                {/* Dummy field to prevent browser autofill/password suggestion popup */}
+                <input type="password" style={{ display: 'none' }} tabIndex="-1" autoComplete="new-password" />
                 <input
                   type="password"
                   name="password"
-                  autoComplete="new-password"
-                  placeholder="Min. 8 characters"
+                  autoComplete="off"
+                  placeholder="Password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
@@ -257,7 +295,7 @@ const Signup = () => {
                     <input
                       type="tel"
                       name="phone"
-                      placeholder="Phone Number"
+                      placeholder="+91 98765 43210"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       required
@@ -270,10 +308,9 @@ const Signup = () => {
                     <input
                       type="text"
                       name="expertise"
-                      placeholder="Area of Expertise (e.g. Manufacturing, Tech)"
+                      placeholder="Area of Expertise (Optional)"
                       value={formData.expertise}
                       onChange={(e) => setFormData({ ...formData, expertise: e.target.value })}
-                      required
                       className="auth-input auth-input-with-icon"
                     />
                   </div>
@@ -320,13 +357,14 @@ const Signup = () => {
             <div className="auth-footer-links">
               By signing up, you agree to our <Link to="/terms" className="auth-link-bold">Terms</Link> & <Link to="/privacy" className="auth-link-bold">Privacy Policy</Link>
             </div>
-            
-            <div className="auth-register-prompt" style={{marginTop: '1.5rem', textAlign: 'center'}}>
+
+            <div className="auth-register-prompt" style={{ marginTop: '1.5rem', textAlign: 'center' }}>
               Already have an account? <a href="#" onClick={handleLoginClick} className="auth-link">Sign in here</a>
             </div>
           </div>
         </div>
-    </div>
+      </div>
+    </>
   );
 };
 

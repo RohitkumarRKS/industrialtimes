@@ -69,6 +69,11 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: true
   },
+  followersCount: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0
+  },
   profilePic: {
     type: DataTypes.STRING,
     allowNull: true

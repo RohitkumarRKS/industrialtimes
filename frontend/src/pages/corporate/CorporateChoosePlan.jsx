@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import API_BASE from '../../config/api';
 
@@ -13,10 +13,41 @@ const CorporateChoosePlan = () => {
     const fetchPlans = async () => {
       try {
         const { data } = await axios.get(`${API_BASE}/api/plans`);
-        // Only show active plans
-        setPlans((data || []).filter(p => p.active));
+        if (data && data.length > 0) {
+          setPlans(data.filter(p => p.active));
+        } else {
+          throw new Error('Empty response');
+        }
       } catch (err) {
-        console.error('Failed to fetch plans', err);
+        console.warn('Failed to fetch plans, using fallback plans', err);
+        // Fallback plans so the UI never looks empty if the database is offline
+        const fallbackPlans = [
+          {
+            id: 1, planKey: 'basic', name: 'STARTER', priceMonthly: 2500, priceQuarterly: 7499, priceYearly: 29999,
+            features: ['3 Articles per month', 'Basic brand listing', 'Email support'],
+            color: '#60a5fa', icon: 'bi-briefcase', recommended: false, active: true,
+            description: 'Perfect for small businesses getting started with media coverage'
+          },
+          {
+            id: 2, planKey: 'standard', name: 'BUSINESS', priceMonthly: 4500, priceQuarterly: 13499, priceYearly: 53999,
+            features: ['5 Articles per month', 'Brand promotion', 'Featured on homepage', 'Dedicated account manager', 'Newsletter placement', 'Social media shoutout'],
+            color: '#3b82f6', icon: 'bi-building', recommended: false, active: true,
+            description: 'Ideal for growing businesses seeking wider media reach'
+          },
+          {
+            id: 3, planKey: 'premium', name: 'ENTERPRISE', priceMonthly: 9500, priceQuarterly: 28499, priceYearly: 113999,
+            features: ['7 Articles per month', 'Premium brand promotion', 'Featured on homepage', 'Dedicated account manager', 'Newsletter placement', 'Social media campaign', '2 Banner Ad slots', 'Priority publishing'],
+            color: '#8b5cf6', icon: 'bi-stars', recommended: true, active: true,
+            description: 'For established enterprises needing maximum visibility'
+          },
+          {
+            id: 4, planKey: 'pro', name: 'EXECUTIVE', priceMonthly: 20000, priceQuarterly: 59999, priceYearly: 239999,
+            features: ['Unlimited Articles', 'Full brand campaign', 'Homepage takeover', 'Dedicated editorial team', 'Newsletter sponsorship', 'Multi-platform campaign', '4 Banner Ad slots', 'Become authorized Author', '1 Digital E-paper feature', 'Industry event access'],
+            color: '#da251d', icon: 'bi-trophy', recommended: false, active: true,
+            description: 'The ultimate corporate package with unlimited access'
+          }
+        ];
+        setPlans(fallbackPlans);
       } finally {
         setLoading(false);
       }
@@ -52,7 +83,9 @@ const CorporateChoosePlan = () => {
       {/* Header */}
       <div className="corp-plan-header">
         <div className="corp-plan-logo">
-          <img src="/industrialtimes_white.png" alt="Industrial Times" style={{ height: '40px', width: 'auto' }} />
+          <Link to="/">
+            <img src="/industrialtimes_white.png" alt="Industrial Times" style={{ height: '40px', width: 'auto' }} />
+          </Link>
         </div>
         <div className="corp-plan-badge">CORPORATE PORTAL</div>
         <h1 className="corp-plan-title">Choose Your Corporate Plan</h1>

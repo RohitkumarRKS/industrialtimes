@@ -3,6 +3,7 @@ import { Container, Row, Col, Badge, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import Advertisement from '../components/Advertisement';
+import MobileStickyAd from '../components/MobileStickyAd';
 import API_BASE from '../config/api';
 
 const Favorites = () => {
@@ -33,7 +34,7 @@ const Favorites = () => {
   };
 
   return (
-    <Container fluid="xl" className="py-5 reveal">
+    <Container fluid className="px-md-4 px-xl-5 py-4 reveal">
       <Helmet>
         <title>My Favorites | Industrial Times</title>
       </Helmet>
@@ -41,7 +42,7 @@ const Favorites = () => {
       <Row className="g-4">
         {/* Left Sidebar Ad */}
         <Col xl={2} lg={2} className="d-none d-lg-block">
-          <div className="sticky-top" style={{ top: '80px' }}>
+          <div className="sticky-top" style={{ top: '135px' }}>
             <Advertisement slot="left-skyscraper" />
           </div>
         </Col>
@@ -105,15 +106,23 @@ const Favorites = () => {
               <Link to="/" className="btn btn-outline-danger rounded-pill px-4 mt-2">Explore Latest News</Link>
             </div>
           )}
+
+          {/* MOBILE AD — 300×250 */}
+          <div className="ad-mobile-only mobile-ad-row">
+            <Advertisement slot="mobile-rectangle" />
+          </div>
         </Col>
 
         {/* Right Sidebar Ad */}
         <Col xl={3} lg={3} className="d-none d-lg-block">
-          <div className="sticky-top" style={{ top: '80px' }}>
+          <div className="sticky-top" style={{ top: '135px' }}>
             <Advertisement slot="right-half-page" />
           </div>
         </Col>
       </Row>
+
+      {/* MOBILE STICKY BOTTOM BANNER — 320×50 */}
+      <MobileStickyAd />
     </Container>
   );
 };

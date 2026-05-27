@@ -13,17 +13,27 @@ const ManageNews = () => {
   const [editMode, setEditMode] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
   const [currentArticle, setCurrentArticle] = useState({ 
-    title: '', content: '', category: '', image: '', video: '', videoUrl: '', trending: false, state: '', city: '', highlights: [] 
+    title: '', content: '', category: '', image: '', video: '', videoUrl: '', trending: false, state: '', city: '', highlights: [], tags: '' 
   });
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [mediaUploading, setMediaUploading] = useState(false);
 
+  // Pagination Boxes Configuration
+  const [selectedBox, setSelectedBox] = useState(1);
+  const [extraBoxesCount, setExtraBoxesCount] = useState(0);
+  const boxSize = 1000;
+
+  useEffect(() => {
+    setSelectedBox(1);
+  }, [activeCategory]);
+
   const categories = [
-    "Articles", "Interviews", "Trending", "Manufacturing", 
-    "Automation", "Acquisitions", "Startups", "Events", 
-    "Videos", "Media Kit", "Magazine"
+    "News", "Articles", "Trending", "OEM", "Automation", 
+    "Interviews", "Startups", "Business", "Events", "Videos",
+    "Entertainment", "Sports", "Education", "Manufacturing",
+    "Acquisitions", "Media Kit", "Magazine"
   ];
   const indianStates = [
     "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", 
@@ -46,7 +56,7 @@ const ManageNews = () => {
       setActiveCategory(cat);
       setEditMode(false);
       setCurrentArticle({ 
-        title: '', content: '', category: cat, image: '', video: '', videoUrl: '', trending: false, state: '', city: '', highlights: [] 
+        title: '', content: '', category: cat, image: '', video: '', videoUrl: '', trending: false, state: '', city: '', highlights: [], tags: '' 
       });
       setShowModal(true);
       window.history.replaceState({}, document.title);
@@ -78,10 +88,10 @@ const ManageNews = () => {
       } catch (e) {
         highlights = [];
       }
-      setCurrentArticle({ ...article, state: article.state || '', city: article.city || '', highlights });
+      setCurrentArticle({ ...article, state: article.state || '', city: article.city || '', tags: article.tags || '', highlights });
     } else {
       setEditMode(false);
-      setCurrentArticle({ title: '', content: '', category: activeCategory !== 'All' ? activeCategory : '', image: '', video: '', videoUrl: '', trending: false, state: '', city: '', highlights: [] });
+      setCurrentArticle({ title: '', content: '', category: activeCategory !== 'All' ? activeCategory : '', image: '', video: '', videoUrl: '', trending: false, state: '', city: '', highlights: [], tags: '' });
     }
     setShowModal(true);
   };
@@ -180,54 +190,157 @@ const ManageNews = () => {
       {success && <div className="manage-alert success">{success}</div>}
       {error && <div className="manage-alert error">{error}</div>}
 
-      {/* Articles Grid */}
+      {/* Dynamic News Box Selector (Tabs) */}
+      {!loading && filteredArticles.length > 0 && (
+        <div className="p-3 mb-4 rounded-3 border bg-light shadow-sm" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          <span className="fw-bold text-dark small d-flex align-items-center gap-1">
+            <i className="bi bi-box-seam-fill text-danger"></i> SELECT NEWS BOX (1,000 PER BOX):
+          </span>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {Array.from({ length: Math.max(1, Math.ceil(filteredArticles.length / boxSize)) + extraBoxesCount }, (_, i) => i + 1).map((boxNum) => {
+              const startIndex = (boxNum - 1) * boxSize;
+              const itemsInBox = Math.min(boxSize, Math.max(0, filteredArticles.length - startIndex));
+              return (
+                <button
+                  key={boxNum}
+                  className={`btn btn-sm ${selectedBox === boxNum ? 'btn-danger' : 'btn-outline-dark'}`}
+                  style={{ borderRadius: '20px', fontWeight: 'bold', fontSize: '0.8rem', padding: '5px 15px', transition: 'all 0.2s' }}
+                  onClick={() => setSelectedBox(boxNum)}
+                >
+                  Box {boxNum} <span style={{ opacity: 0.75, fontSize: '0.7rem', marginLeft: '3px' }}>({itemsInBox}/1000)</span>
+                </button>
+              );
+            })}
+            
+            <button
+              className="btn btn-sm btn-outline-danger"
+              style={{ borderRadius: '20px', fontWeight: 'bold', fontSize: '0.8rem', padding: '5px 15px', borderStyle: 'dashed' }}
+              onClick={() => setExtraBoxesCount(prev => prev + 1)}
+            >
+              <i className="bi bi-plus-lg me-1"></i> Add Box
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Articles List / Table */}
       {loading ? (
         <div className="manage-loading">
           <i className="bi bi-arrow-repeat spin"></i>
           <p>Loading articles...</p>
         </div>
       ) : (
-        <div className="manage-articles-grid">
+        <div className="table-responsive bg-white rounded-3 border p-3 shadow-sm mb-4">
           {filteredArticles.length > 0 ? (
-            filteredArticles.map((article) => (
-              <div key={article.id} className="manage-article-card">
-                <div className="manage-article-thumb">
-                  {article.image ? (
-                    <img 
-                      src={article.image.startsWith('http') ? article.image : `${API_BASE}${article.image}`} 
-                      alt={article.title}
-                    />
-                  ) : (
-                    <div className="manage-article-placeholder">
-                      <i className="bi bi-newspaper"></i>
-                    </div>
-                  )}
-                  <span className="manage-article-cat-badge">{article.category}</span>
-                  {article.trending && (
-                    <span className="manage-article-trending">
-                      <i className="bi bi-lightning-fill"></i>
-                    </span>
-                  )}
-                </div>
-                <div className="manage-article-body">
-                  <h3 className="manage-article-title">{article.title}</h3>
-                  <div className="manage-article-actions">
-                    <button className="manage-edit-btn" onClick={() => handleShow(article)}>
-                      <i className="bi bi-pencil-square"></i> Edit
-                    </button>
-                    <button className="manage-delete-btn" onClick={() => handleDelete(article.id)}>
-                      <i className="bi bi-trash3"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
+            (() => {
+              const startIndex = (selectedBox - 1) * boxSize;
+              const articlesInActiveBox = filteredArticles.slice(startIndex, startIndex + boxSize);
+
+              return (
+                <table className="admin-table align-middle">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '60px' }}>#</th>
+                      <th style={{ width: '80px' }}>Thumbnail</th>
+                      <th>Title</th>
+                      <th>Category</th>
+                      <th>Location</th>
+                      <th>Status</th>
+                      <th>Date</th>
+                      <th style={{ width: '120px', textAlign: 'center' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {articlesInActiveBox.length > 0 ? (
+                      articlesInActiveBox.map((article, idx) => {
+                        const absoluteIndex = startIndex + idx + 1;
+                        const imgUrl = article.image 
+                          ? (article.image.startsWith('http') ? article.image : `${API_BASE}${article.image}`)
+                          : null;
+                        return (
+                          <tr key={article.id}>
+                            <td className="fw-bold text-muted">#{absoluteIndex}</td>
+                            <td>
+                              {imgUrl ? (
+                                <img 
+                                  src={imgUrl} 
+                                  alt={article.title} 
+                                  className="rounded border" 
+                                  style={{ width: '45px', height: '45px', objectFit: 'cover' }}
+                                />
+                              ) : (
+                                <div className="rounded bg-light border d-flex align-items-center justify-content-center" style={{ width: '45px', height: '45px' }}>
+                                  <i className="bi bi-newspaper text-muted" style={{ fontSize: '1.1rem' }}></i>
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <span 
+                                className="fw-bold text-dark hover-text-danger" 
+                                style={{ cursor: 'pointer', transition: 'color 0.2s' }} 
+                                onClick={() => handleShow(article)}
+                              >
+                                {article.title}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25" style={{ textTransform: 'uppercase', fontSize: '0.72rem' }}>
+                                {article.category}
+                              </span>
+                            </td>
+                            <td className="small text-muted">
+                              {article.state ? `${article.city ? article.city + ', ' : ''}${article.state}` : '—'}
+                            </td>
+                            <td>
+                              {article.trending ? (
+                                <span className="badge bg-warning text-dark"><i className="bi bi-lightning-fill"></i> Trending</span>
+                              ) : (
+                                <span className="badge bg-light text-muted border">Standard</span>
+                              )}
+                            </td>
+                            <td className="small text-muted">
+                              {article.createdAt ? new Date(article.createdAt).toLocaleDateString() : 'Today'}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button 
+                                className="btn btn-sm btn-outline-primary me-2"
+                                style={{ borderRadius: '6px' }}
+                                onClick={() => handleShow(article)}
+                                title="Edit article"
+                              >
+                                <i className="bi bi-pencil-square"></i>
+                              </button>
+                              <button 
+                                className="btn btn-sm btn-outline-danger"
+                                style={{ borderRadius: '6px' }}
+                                onClick={() => handleDelete(article.id)}
+                                title="Delete article"
+                              >
+                                <i className="bi bi-trash3"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={8} className="text-center py-5 text-muted">
+                          <i className="bi bi-folder2-open display-6 mb-3 d-block opacity-40"></i>
+                          <h5>This Box is currently empty</h5>
+                          <p className="small mb-0">No articles found in Box {selectedBox} of {activeCategory}.</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              );
+            })()
           ) : (
             <div className="manage-empty">
               <i className="bi bi-folder2-open"></i>
               <h3>No news found in {activeCategory}</h3>
               <p>Be the first to publish a story in this category.</p>
-              <button className="manage-news-publish-btn" onClick={() => handleShow()}>Publish Now</button>
+              <button className="manage-news-publish-btn mx-auto" onClick={() => handleShow()}>Publish Now</button>
             </div>
           )}
         </div>
@@ -331,6 +444,18 @@ const ManageNews = () => {
                           onChange={(e) => setCurrentArticle({ ...currentArticle, city: e.target.value })}
                           style={{ marginTop: '0.5rem' }}
                         />
+                      </div>
+                      <div className="publish-field">
+                        <label>Article Tags / Keywords (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. steel, manufacturing, automation"
+                          value={currentArticle.tags || ''}
+                          onChange={(e) => setCurrentArticle({ ...currentArticle, tags: e.target.value })}
+                        />
+                        <div className="x-small text-muted mt-1">
+                          Separate with commas. These tags work in the background for SEO and search engine indexing.
+                        </div>
                       </div>
                       <div className="publish-field">
                         <label>Cover Image</label>

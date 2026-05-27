@@ -12,7 +12,14 @@ const Ad = sequelize.define('Ad', {
       'leaderboard',        // 728 × 90  — top of page
       'left-skyscraper',   // 160 × 600 — left sidebar
       'right-half-page',   // 300 × 600 — right sidebar
-      'popup'              // legacy popup slot
+      'popup',             // legacy popup slot
+      'article-inline',    // 728 × 90  — inline within articles
+      'top-bottom-banner', // 970 × 90  — large horizontal banner
+      'in-feed-rectangle', // 336 × 280 — inline within news feed grids
+      'inline-news-footer', // 728 × 90  — inline at bottom of news articles
+      'mobile-banner',     // 300 × 100
+      'mobile-rectangle',  // 300 × 250
+      'mobile-inline'      // 300 × 200
     ),
     allowNull: false,
     defaultValue: 'leaderboard'
@@ -47,11 +54,34 @@ const Ad = sequelize.define('Ad', {
     allowNull: true,
     defaultValue: ''
   },
+  // ── Google Ad & UI Indicators ─────────────────────────────────
+  isGoogleAd: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  googleAdCode: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  isSponsored: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
   // ── Targeting ─────────────────────────────────────────────────
   category: {
     type: DataTypes.STRING,
     allowNull: true,
     defaultValue: null   // null = global (all pages)
+  },
+  targetState: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null
+  },
+  targetCity: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null
   },
   // ── Schedule ──────────────────────────────────────────────────
   startDate: {
