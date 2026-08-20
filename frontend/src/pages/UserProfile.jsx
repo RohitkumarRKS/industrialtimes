@@ -1,21 +1,81 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Badge, ProgressBar } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { Container, Row, Col, Card, Button, Badge, ProgressBar, Form } from 'react-bootstrap';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import PaymentGatewayModal from '../components/PaymentGatewayModal';
 import API_BASE from '../config/api';
+import { INDIAN_STATES } from '../data/indianStatesAndCities';
+import AdminDashboard from './superadmin/AdminDashboard';
+
+const getReporterLevel = (followersCount = 0, thresholds = { silver: 10, gold: 50, diamond: 100 }) => {
+  const count = parseInt(followersCount) || 0;
+  if (count >= (thresholds.diamond || 100)) return { level: 'Diamond', color: '#38bdf8', icon: 'bi-gem', bg: '#e0f2fe', text: '#0369a1' };
+  if (count >= (thresholds.gold || 50)) return { level: 'Gold', color: '#fbbf24', icon: 'bi-trophy-fill', bg: '#fef3c7', text: '#b45309' };
+  if (count >= (thresholds.silver || 10)) return { level: 'Silver', color: '#94a3b8', icon: 'bi-award-fill', bg: '#f1f5f9', text: '#475569' };
+  return { level: 'Bronze', color: '#cd7f32', icon: 'bi-award', bg: '#ffedd5', text: '#c2410c' };
+};
 
 const UserProfile = () => {
+  const [reporterThresholds, setReporterThresholds] = useState({ silver: 10, gold: 50, diamond: 100 });
+
+  useEffect(() => {
+    sessionStorage.setItem('portalMode', 'user');
+  }, []);
+
+  useEffect(() => {
+    const fetchThresholds = async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/platform-settings/public`);
+        if (data.reporterLevels) {
+          setReporterThresholds(data.reporterLevels);
+        }
+      } catch (err) {
+        console.error("Failed to fetch public level settings", err);
+      }
+    };
+    fetchThresholds();
+  }, []);
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [articles, setArticles] = useState([]);
-  const [showPayment, setShowPayment] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('adminOpen') === 'true') {
+      try {
+        const saved = localStorage.getItem('userInfo');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && (parsed.isManager || parsed.role === 'superadmin')) {
+            setShowAdminPanel(true);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse userInfo for adminOpen check", e);
+      }
+      params.delete('adminOpen');
+      const searchStr = params.toString();
+      navigate(location.pathname + (searchStr ? '?' + searchStr : ''), { replace: true });
+    }
+  }, [location, navigate]);
+
+  const hasAdminAccess = () => {
+    try {
+      const admin = localStorage.getItem('adminInfo');
+      if (admin && admin !== 'undefined') {
+        const parsed = JSON.parse(admin);
+        return parsed && (parsed.role === 'superadmin' || parsed.isManager);
+      }
+    } catch (e) {}
+    return false;
+  };
 
   // Corporate Specific Dashboard States
   const [corpTab, setCorpTab] = useState('overview');
   const [corpAds, setCorpAds] = useState([]);
-  const [corpArticleForm, setCorpArticleForm] = useState({ title: '', content: '', category: 'Articles', image: null });
+  const [corpArticleForm, setCorpArticleForm] = useState({ title: '', content: '', category: 'Articles', image: null, videoUrl: '', state: '', city: '' });
   const [corpPublishing, setCorpPublishing] = useState(false);
   const [corpPublishMsg, setCorpPublishMsg] = useState({ text: '', type: '' });
 
@@ -26,33 +86,76 @@ const UserProfile = () => {
   const [reqStatus, setReqStatus] = useState({ text: '', type: '' });
 
   useEffect(() => {
-    const saved = sessionStorage.getItem('userInfo');
+    const saved = localStorage.getItem('userInfo');
     if (saved) {
-      const u = JSON.parse(saved);
-      // Reporters and corporate users get full dashboard
-      if (u.role === 'author' || u.role === 'corporate') {
-        navigate('/user-dashboard', { replace: true });
-        return;
+      try {
+        const u = JSON.parse(saved);
+        if (u.role === 'author') {
+          navigate('/user-dashboard', { replace: true });
+          return;
+        } else if (u.role === 'corporate') {
+          if (u.membershipPlan) {
+            navigate('/user-dashboard', { replace: true });
+          } else {
+            navigate(`/corporate/payment?plan=${u.selectedPlan || 'basic'}`, { replace: true });
+          }
+          return;
+        }
+        setUserInfo(u);
+      } catch (e) {
+        console.error(e);
+        localStorage.removeItem('userInfo');
+        navigate('/login');
       }
-      // Readers stay on simple profile page
-      setUserInfo(u);
     } else {
       navigate('/login');
     }
   }, [navigate]);
 
   useEffect(() => {
-    // Fetch articles for author and corporate dashboard
+    if (userInfo?.id) {
+      const fetchLatestStats = async () => {
+        try {
+          const { data } = await axios.get(`${API_BASE}/api/auth/user/${userInfo.id}`);
+          if (data.role === 'author') {
+            const updated = { ...userInfo, ...data };
+            localStorage.setItem('userInfo', JSON.stringify(updated));
+            navigate('/user-dashboard', { replace: true });
+          } else if (data.role === 'corporate') {
+            const updated = { ...userInfo, ...data };
+            localStorage.setItem('userInfo', JSON.stringify(updated));
+            if (data.membershipPlan) {
+              navigate('/user-dashboard', { replace: true });
+            } else {
+              navigate(`/corporate/payment?plan=${data.selectedPlan || 'basic'}`, { replace: true });
+            }
+          } else {
+            setUserInfo(prev => {
+              const updated = { ...prev, ...data };
+              localStorage.setItem('userInfo', JSON.stringify(updated));
+              return updated;
+            });
+          }
+        } catch (err) {
+          console.error('Failed to fetch latest stats', err);
+        }
+      };
+      fetchLatestStats();
+    }
+  }, [userInfo?.id, navigate]);
+
+  useEffect(() => {
+    if (!userInfo?.id) return;
     const fetchArticles = async () => {
       try {
-        const { data } = await axios.get(`${API_BASE}/api/articles`);
+        const { data } = await axios.get(`${API_BASE}/api/articles?authorId=${userInfo.id}`);
         setArticles(data || []);
       } catch (e) {
         console.error('Failed to fetch articles');
       }
     };
     fetchArticles();
-  }, []);
+  }, [userInfo?.id]);
 
   const fetchCorpAds = async () => {
     try {
@@ -67,7 +170,7 @@ const UserProfile = () => {
     if (userInfo && userInfo.role === 'corporate') {
       fetchCorpAds();
     }
-  }, [userInfo]);
+  }, [userInfo?.id, userInfo?.role]);
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
@@ -91,7 +194,7 @@ const UserProfile = () => {
       });
 
       setUserInfo(updatedUser);
-      sessionStorage.setItem('userInfo', JSON.stringify(updatedUser));
+      localStorage.setItem('userInfo', JSON.stringify(updatedUser));
       alert('Profile picture updated!');
     } catch (err) {
       alert('Failed to upload image');
@@ -101,7 +204,7 @@ const UserProfile = () => {
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem('userInfo');
+    localStorage.removeItem('userInfo');
     navigate('/');
   };
 
@@ -119,32 +222,7 @@ const UserProfile = () => {
     pro: 'EXECUTIVE'
   };
 
-  const onPaymentSuccess = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/membership/verify-payment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: userInfo.id,
-          planId: userInfo.selectedPlan,
-          billingCycle: 'monthly',
-          razorpay_payment_id: 'mock_pay_' + Date.now(),
-          mock: true
-        })
-      });
 
-      if (res.ok) {
-        const updatedUser = { ...userInfo, membershipPlan: userInfo.selectedPlan };
-        setUserInfo(updatedUser);
-        sessionStorage.setItem('userInfo', JSON.stringify(updatedUser));
-        setShowPayment(false);
-        alert(`Success! You are now a ${planLabels[userInfo.selectedPlan] || userInfo.selectedPlan} member.`);
-      }
-    } catch (e) {
-      alert("Payment recorded. Please refresh.");
-      setShowPayment(false);
-    }
-  };
 
   const getPlanQuotas = () => {
     const plan = userInfo?.membershipPlan;
@@ -187,8 +265,11 @@ const UserProfile = () => {
         title: corpArticleForm.title,
         content: corpArticleForm.content,
         category: corpArticleForm.category,
+        image: imageUrl,
+        videoUrl: corpArticleForm.videoUrl,
         author: userInfo.companyName || userInfo.name,
-        image: imageUrl
+        state: corpArticleForm.state,
+        city: corpArticleForm.city
       };
 
       await axios.post(`${API_BASE}/api/articles`, articleData, {
@@ -199,10 +280,10 @@ const UserProfile = () => {
       });
 
       setCorpPublishMsg({ text: '🎉 Premium Corporate Article successfully published! It is now live on the global feed.', type: 'success' });
-      setCorpArticleForm({ title: '', content: '', category: 'Articles', image: null });
+      setCorpArticleForm({ title: '', content: '', category: 'Articles', image: null, videoUrl: '', state: '', city: '' });
       
       // Refresh articles
-      const { data } = await axios.get(`${API_BASE}/api/articles`);
+      const { data } = await axios.get(`${API_BASE}/api/articles?authorId=${userInfo.id}`);
       setArticles(data || []);
 
       // Reset file input
@@ -281,6 +362,10 @@ const UserProfile = () => {
     }, 6000);
   };
 
+  if (showAdminPanel) {
+    return <AdminDashboard isEmbedded={true} onClose={() => setShowAdminPanel(false)} />;
+  }
+
   if (!userInfo) return null;
 
   const role = userInfo.role;
@@ -301,7 +386,7 @@ const UserProfile = () => {
 
   const roleLabel = {
     user: 'Reader',
-    author: 'Author / Reporter',
+    author: 'Reporter',
     corporate: 'Corporate Account',
     superadmin: 'Super Admin'
   };
@@ -486,17 +571,33 @@ const UserProfile = () => {
                         </div>
                       </div>
                     </Col>
-                    <Col md={6}>
-                      <div className="detail-item">
-                        <label className="text-muted x-small fw-bold text-uppercase">Current Plan</label>
-                        <div className="d-flex align-items-center gap-2">
-                          <p className="fw-bold fs-5 mb-0 text-uppercase">
-                            {userInfo.membershipPlan ? planLabels[userInfo.membershipPlan] || userInfo.membershipPlan : 'Free'}
-                          </p>
-                          {userInfo.membershipPlan && <Badge bg="success">Active</Badge>}
+                    {role === 'author' ? (() => {
+                      const lvl = getReporterLevel(userInfo.followersCount, reporterThresholds);
+                      return (
+                        <Col md={6}>
+                          <div className="detail-item">
+                            <label className="text-muted x-small fw-bold text-uppercase">Reporter Status</label>
+                            <div className="d-flex align-items-center gap-2">
+                              <p className="fw-bold fs-5 mb-0 text-uppercase" style={{ color: lvl.color }}>
+                                <i className={`bi ${lvl.icon} me-1`}></i> {lvl.level} Level
+                              </p>
+                            </div>
+                          </div>
+                        </Col>
+                      );
+                    })() : (
+                      <Col md={6}>
+                        <div className="detail-item">
+                          <label className="text-muted x-small fw-bold text-uppercase">Current Plan</label>
+                          <div className="d-flex align-items-center gap-2">
+                            <p className="fw-bold fs-5 mb-0 text-uppercase">
+                              {userInfo.membershipPlan ? planLabels[userInfo.membershipPlan] || userInfo.membershipPlan : 'Free'}
+                            </p>
+                            {userInfo.membershipPlan && <Badge bg="success">Active</Badge>}
+                          </div>
                         </div>
-                      </div>
-                    </Col>
+                      </Col>
+                    )}
                   </Row>
 
                   {/* === CORPORATE: Premium Active Subscription Dashboard === */}
@@ -661,18 +762,41 @@ const UserProfile = () => {
                             <Row className="mb-3">
                               <Col md={6}>
                                 <label className="fw-bold small text-muted mb-1">Target Category *</label>
-                                <select 
-                                  className="form-select rounded-3"
+                                <Form.Select 
+                                  className="rounded-3"
                                   value={corpArticleForm.category}
                                   onChange={e => setCorpArticleForm({ ...corpArticleForm, category: e.target.value })}
                                   required
                                 >
-                                  {['News', 'Articles', 'Trending', 'OEM', 'Automation', 'Interviews', 'Startups', 'Business', 'Events', 'Videos', 'Entertainment', 'Sports', 'Education', 'Manufacturing', 'Acquisitions', 'Media Kit', 'Magazine'].map(cat => (
+                                  {['Global', 'News', 'Regional', 'Articles', 'Trending', 'OEM', 'Automation', 'Interview', 'Startup', 'Business', 'Event', 'Tender', 'Entertainment', 'Sports', 'Education'].map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>
                                   ))}
-                                </select>
+                                </Form.Select>
                               </Col>
                               <Col md={6}>
+                                <label className="fw-bold small text-muted mb-1">State (Optional)</label>
+                                <Form.Select 
+                                  className="rounded-3"
+                                  value={corpArticleForm.state || ''}
+                                  onChange={e => setCorpArticleForm({ ...corpArticleForm, state: e.target.value })}
+                                >
+                                  <option value="">— Select State —</option>
+                                  {INDIAN_STATES.map(st => (
+                                    <option key={st} value={st}>{st}</option>
+                                  ))}
+                                </Form.Select>
+                              </Col>
+                              <Col md={6} className="mt-3">
+                                <label className="fw-bold small text-muted mb-1">City (Optional)</label>
+                                <input 
+                                  type="text" 
+                                  className="form-control rounded-3"
+                                  placeholder="Enter City / Area..."
+                                  value={corpArticleForm.city || ''}
+                                  onChange={e => setCorpArticleForm({ ...corpArticleForm, city: e.target.value })}
+                                />
+                              </Col>
+                              <Col md={6} className="mt-3">
                                 <label className="fw-bold small text-muted mb-1">Featured Branding Thumbnail</label>
                                 <input 
                                   type="file"
@@ -680,6 +804,16 @@ const UserProfile = () => {
                                   accept="image/*"
                                   className="form-control rounded-3"
                                   onChange={e => setCorpArticleForm({ ...corpArticleForm, image: e.target.files[0] || null })}
+                                />
+                              </Col>
+                              <Col md={12} className="mt-3">
+                                <label className="fw-bold small text-muted mb-1">Media / Social Embed URL (Optional)</label>
+                                <input 
+                                  type="url"
+                                  className="form-control rounded-3"
+                                  placeholder="Paste YouTube, Facebook, Instagram, or LinkedIn link here..." 
+                                  value={corpArticleForm.videoUrl || ''} 
+                                  onChange={e => setCorpArticleForm({ ...corpArticleForm, videoUrl: e.target.value })} 
                                 />
                               </Col>
                             </Row>
@@ -962,6 +1096,22 @@ const UserProfile = () => {
                         <i className="bi bi-credit-card me-2"></i>Activate Plan
                       </Button>
                     )}
+                    {userInfo && (userInfo.role === 'superadmin' || userInfo.isManager) && (
+                       <Button 
+                         variant="danger" 
+                         className="fw-bold px-4 rounded-pill" 
+                         style={{ background: '#da251d', border: 'none' }}
+                         onClick={() => {
+                           if (userInfo.isManager) {
+                             setShowAdminPanel(true);
+                           } else {
+                             navigate('/superadmin-login');
+                           }
+                         }}
+                       >
+                         <i className="bi bi-shield-lock me-2"></i>Access Admin Panel
+                       </Button>
+                     )}
                     <Button variant="outline-dark" className="fw-bold px-4 rounded-pill" onClick={handleLogout}>
                       <i className="bi bi-box-arrow-right me-2"></i>Logout
                     </Button>
@@ -973,17 +1123,7 @@ const UserProfile = () => {
         </Row>
       </Container>
 
-      {/* Payment Gateway Modal for Corporate */}
-      {showPayment && userInfo.selectedPlan && (
-        <PaymentGatewayModal 
-          show={showPayment} 
-          onHide={() => setShowPayment(false)}
-          amount={planPrices[userInfo.selectedPlan]?.monthly || 2500}
-          planName={planLabels[userInfo.selectedPlan] || 'STARTER'}
-          billingCycle="monthly"
-          onPaymentSuccess={onPaymentSuccess}
-        />
-      )}
+
 
       <style dangerouslySetInnerHTML={{ __html: `
         .avatar-edit-btn:hover {

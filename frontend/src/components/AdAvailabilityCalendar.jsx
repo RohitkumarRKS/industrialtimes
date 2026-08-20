@@ -133,14 +133,20 @@ const AdAvailabilityCalendar = ({ slot, targetState, targetCity, API_BASE, authT
                 <div
                   key={day}
                   className={`ad-cal-day ad-cal-day--${status} ${isToday ? 'ad-cal-day--today' : ''} ${isPast ? 'ad-cal-day--past' : ''} ${selectedDay === day ? 'ad-cal-day--selected' : ''}`}
+                  style={{ cursor: (status === 'booked' || status === 'pending' || isPast) ? 'not-allowed' : 'pointer', opacity: isPast ? 0.4 : 1 }}
                   onClick={() => {
+                    // Block booked, pending, and past days from selection
+                    if (status === 'booked' || status === 'pending' || isPast) {
+                      setSelectedDay(selectedDay === day ? null : day);
+                      return;
+                    }
                     if (onSelectDate && status === 'free') {
                       onSelectDate(dateStr);
                     } else {
                       setSelectedDay(selectedDay === day ? null : day);
                     }
                   }}
-                  title={status === 'booked' ? 'Booked' : status === 'pending' ? 'On Hold (Pending Approval)' : 'Available'}
+                  title={status === 'booked' ? '🔴 Booked — This slot is unavailable' : status === 'pending' ? '🟡 On Hold — Pending approval' : isPast ? 'Past date' : '🟢 Available — Click to select'}
                 >
                   {day}
                 </div>

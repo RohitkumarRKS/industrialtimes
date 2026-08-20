@@ -239,7 +239,14 @@ const AdminNotifications = () => {
                   {reporterRequests.map((req) => (
                     <tr key={req.id} className="border-bottom">
                       <td className="ps-4 py-3">
-                        <p className="mb-0 fw-bold text-dark">{req.name}</p>
+                        <p className="mb-0 fw-bold text-dark">
+                          {req.name}
+                          {req.status === 'payment_pending' && (
+                            <span className="badge bg-warning text-dark ms-2 small fw-bold" style={{ fontSize: '0.7rem' }}>
+                              Payment Pending
+                            </span>
+                          )}
+                        </p>
                         <small className="text-muted">{req.email}</small>
                       </td>
                       <td className="py-3">

@@ -25,7 +25,7 @@ const SeoSettings = sequelize.define('SeoSettings', {
   googleAnalyticsId: {
     type: DataTypes.STRING,
     allowNull: true,
-    defaultValue: ''
+    defaultValue: 'G-P5M643PL4W'
   },
   podcastHeaderTitle: {
     type: DataTypes.STRING,

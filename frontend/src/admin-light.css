@@ -26,6 +26,9 @@
   width: 100vw;
   overflow: hidden;
   transition:all .7s cubic-bezier(.4,0,.2,1);
+  position: relative;
+  z-index: 1;
+  background: #f5f5f0;
 }
 
 /* Slide-Out Transition — triggered on successful login */
@@ -105,23 +108,6 @@
 .auth-brand-footer{position:absolute;bottom:2rem;left:4rem;font-size:.75rem;color: #64748b;letter-spacing:.3px}
 .auth-brand-footer-center{position:absolute;bottom:2rem;left:0;right:0;text-align:center;font-size:.75rem;color: #64748b;letter-spacing:.3px}
 
-.auth-split-right {
-  flex: 1;
-  background: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-}
-
-.auth-form-container {
-  width: 100%;
-  max-width: 440px;
-  background: #ffffff;
-  padding: 2.5rem;
-  border-radius: 24px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.04);
-}
 
 @keyframes authSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
 
@@ -240,7 +226,42 @@
 .auth-footer-links{text-align:center;margin-top:2rem;font-size:.84rem;color: #64748b}
 .auth-role-group{display:flex;gap:1.5rem;justify-content:center}
 .auth-role-label{display:flex;align-items:center;gap:6px;font-size:.9rem;color: #94a3b8;cursor:pointer;padding:8px 16px;border:1.5px solid #334155;border-radius:10px;transition:all .2s}
-.auth-role-label:has(input:checked){border-color: #da251d;background: rgba(218, 37, 29, 0.1);color:#f8fafc}
+/* Password Toggle Style */
+.auth-input-group {
+  position: relative !important;
+}
+
+.auth-password-toggle {
+  position: absolute !important;
+  right: 14px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: transparent !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  font-size: 1.1rem !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 10 !important;
+  transition: color 0.25s ease, transform 0.25s ease !important;
+  box-shadow: none !important;
+  outline: none !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+.auth-password-toggle:hover {
+  color: #da251d !important; /* Industrial Times Red */
+  transform: translateY(-50%) scale(1.15) !important;
+}
+
+.auth-input-with-eye {
+  padding-right: 46px !important;
+}
 
 /* Checkbox & Forgot Password row */
 .auth-form-options {
@@ -366,11 +387,11 @@
 
 /* ═══ ADMIN LIGHT LAYOUT ═══ */
 .admin-light-layout{display:flex;min-height:100vh;background: var(--admin-bg); color: var(--admin-text-main);}
-.admin-light-sidebar{width:260px;background: var(--admin-sidebar-bg); border-right: 1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100}
+.admin-light-sidebar{width:260px;background: var(--admin-sidebar-bg); border-right: 1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overscroll-behavior:contain}
 .admin-sidebar-logo{display:flex;align-items:center;justify-content:center;padding:24px 16px;border-bottom: 1px solid rgba(255,255,255,0.05)}
 .admin-sidebar-logo-img{width:100%;max-width:190px;height:auto;object-fit:contain}
 .admin-sidebar-logo-text{display:none}
-.admin-sidebar-nav{flex:1;padding:1.5rem 12px;display:flex;flex-direction:column;gap:4px;overflow-y:auto;min-height:0;scrollbar-width:none}
+.admin-sidebar-nav{flex:1;padding:1.5rem 12px;display:flex;flex-direction:column;gap:4px;overflow-y:auto;min-height:0;scrollbar-width:none;overscroll-behavior:contain}
 .admin-sidebar-nav.scrolling-active{scrollbar-width:thin}
 /* Custom sleek scrollbar for the sidebar navigation */
 .admin-sidebar-nav::-webkit-scrollbar {
@@ -407,8 +428,31 @@
 .admin-logout-btn:hover{background:#fef2f2;color:#dc2626;border-color:#fecaca}
 
 /* ═══ ADMIN MAIN AREA ═══ */
-.admin-light-main{margin-left:260px;width:calc(100vw - 260px);display:flex;flex-direction:column;min-height:100vh;background: var(--admin-bg);}
+.admin-light-main{margin-left:260px;width:calc(100% - 260px);display:flex;flex-direction:column;min-height:100vh;background: var(--admin-bg);}
 .admin-light-topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;background: var(--admin-card-bg);border-bottom: 1px solid var(--admin-border)}
+
+/* Sidebar toggle button */
+.admin-sidebar-toggle {
+  background: transparent;
+  border: none;
+  color: var(--admin-text-main);
+  font-size: 1.6rem;
+  padding: 4px 8px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+.admin-sidebar-toggle:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+@media (max-width: 991px) {
+  .admin-sidebar-toggle {
+    display: inline-flex;
+  }
+}
 .admin-page-title{font-size:1.4rem;font-weight:800;color: var(--admin-text-main);margin:0}
 .admin-topbar-right{display:flex;align-items:center;gap:16px}
 .admin-search-box{display:flex;align-items:center;gap:8px;background: #f1f5f9;padding:8px 16px;border-radius:8px;border: 1px solid var(--admin-border)}
@@ -579,8 +623,42 @@
 .manage-table-btn.delete:hover{border-color:#ef4444;color:#ef4444;background:#fef2f2}
 
 /* ═══ RESPONSIVE ═══ */
-@media(max-width:1024px){.admin-stats-grid{grid-template-columns:repeat(2,1fr)}.admin-content-grid{grid-template-columns:1fr}.manage-ads-slots{grid-template-columns:repeat(2,1fr)}.publish-form-grid{grid-template-columns:1fr}}
-@media(max-width:768px){.admin-light-sidebar{display:none}.admin-light-main{margin-left:0}.admin-stats-grid{grid-template-columns:1fr}.manage-ads-slots{grid-template-columns:1fr}}
+@media(max-width:1024px){
+  .admin-stats-grid{grid-template-columns:repeat(2,1fr)}
+  .admin-content-grid{grid-template-columns:1fr}
+  .manage-ads-slots{grid-template-columns:repeat(2,1fr)}
+  .publish-form-grid{grid-template-columns:1fr}
+}
+@media(max-width:991px){
+  .admin-light-sidebar{
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex !important;
+  }
+  .admin-light-sidebar.mobile-show{
+    transform: translateX(0);
+  }
+  .admin-light-main{
+    margin-left:0 !important;
+    width: 100% !important;
+  }
+  .admin-stats-grid{grid-template-columns:1fr}
+  .manage-ads-slots{grid-template-columns:1fr}
+  .admin-light-content{padding: 20px 16px;}
+  
+  /* Sidebar backdrop overlay style */
+  .admin-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 99;
+  }
+}
+@media(max-width:768px){
+  .admin-stats-grid{grid-template-columns:1fr}
+  .manage-ads-slots{grid-template-columns:1fr}
+}
 
 
 /* --- ADMIN PROFILE PAGE --- */
@@ -630,7 +708,7 @@
 .new-notification-dot { position: absolute; top: 10px; right: 12px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; }
 
 .new-dashboard-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; padding: 24px 40px; background: transparent; min-height: calc(100vh - 80px); }
-.new-stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+.new-stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 24px; }
 .new-stat-card { background: #FDFFFC; padding: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; }
 .new-stat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .new-stat-title { font-size: 0.85rem; font-weight: 600; color: #64748b; }
@@ -696,7 +774,7 @@
   .new-middle-split { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 991px) {
   .new-stats-row { grid-template-columns: 1fr; }
   .new-dashboard-layout { padding: 16px; }
   .new-admin-topbar { padding: 16px; flex-direction: column; gap: 16px; align-items: flex-start; }

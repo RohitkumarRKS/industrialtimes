@@ -4,20 +4,44 @@ import { Container, Row, Col, Spinner, Badge } from 'react-bootstrap';
 import Advertisement from '../components/Advertisement';
 import MobileStickyAd from '../components/MobileStickyAd';
 import API_BASE from '../config/api';
+import VideoNewsThumbnail from '../components/VideoNewsThumbnail';
+import { createSlug } from '../utils/slugify';
+import { getRelativeTime } from '../utils/timeFormatter';
 
 const CategoryPage = ({ categoryOverride }) => {
   const { category: urlCategory } = useParams();
   const category = categoryOverride || urlCategory;
   const [articles, setArticles] = useState([]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(8);
+  const [rotateIndex, setRotateIndex] = useState(0);
 
-  const createSlug = (text) => {
-    return text
-      .toLowerCase()
-      .replace(/ /g, '-')
-      .replace(/[^\w-]+/g, '');
-  };
+  const featuredArticles = articles.slice(0, 3);
+  const featuredRotatingPool = articles.slice(1, 11);
+  const remainingArticles = articles.slice(3, visibleCount);
+
+  useEffect(() => {
+    setRotateIndex(0);
+  }, [category, articles]);
+
+  useEffect(() => {
+    if (featuredRotatingPool.length <= 2) return;
+    const interval = setInterval(() => {
+      setRotateIndex((prev) => (prev + 1) % featuredRotatingPool.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [featuredRotatingPool.length]);
+
 
   const getImageUrl = (img) => {
     if (!img) return null;
@@ -30,7 +54,7 @@ const CategoryPage = ({ categoryOverride }) => {
     const fetchData = async () => {
       try {
         // Fetch Local News
-        const res = await fetch(`${API_BASE}/api/articles/category/${category}`);
+        const res = await fetch(`${API_BASE}/api/articles/category/${category}?limit=30`);
         const data = await res.json();
         setArticles(data);
         setLoading(false);
@@ -42,8 +66,6 @@ const CategoryPage = ({ categoryOverride }) => {
 
     fetchData();
     window.scrollTo(0, 0);
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
   }, [category]);
 
   useEffect(() => {
@@ -71,9 +93,14 @@ const CategoryPage = ({ categoryOverride }) => {
     );
   }
 
-  const latestArticles = articles.slice(0, visibleCount);
-  const featuredArticles = latestArticles.slice(0, 3);
-  const standardArticles = latestArticles.slice(3);
+  let article1 = null;
+  let article2 = null;
+  if (featuredRotatingPool.length > 0) {
+    article1 = featuredRotatingPool[rotateIndex % featuredRotatingPool.length];
+    if (featuredRotatingPool.length > 1) {
+      article2 = featuredRotatingPool[(rotateIndex + 1) % featuredRotatingPool.length];
+    }
+  }
 
   return (
     <Container fluid className="px-md-4 px-lg-5 py-4 reveal">
@@ -100,30 +127,16 @@ const CategoryPage = ({ categoryOverride }) => {
               <>
                 {/* News 1 */}
                 {featuredArticles.slice(0, 1).map((article) => {
-                  const articleImg = getImageUrl(article.image || article.imageUrl);
-                  const articleLink = `/article/${createSlug(article.category || 'news')}/${createSlug(article.title)}/${article.id}`;
+                  const articleLink = `/article/${createSlug(article.category || 'news')}/${createSlug(article.title)}`;
                   return (
                     <Link 
                       to={articleLink} 
                       key={article.id} 
                       className="featured-news-card" 
-                      style={{ height: '280px', display: 'flex', flexDirection: 'column' }}
+                      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
                     >
-                      <div className="featured-news-thumb" style={{ height: '150px', aspectRatio: 'auto' }}>
-                        {articleImg ? (
-                          <img src={articleImg} alt={article.title} className="featured-news-img" />
-                        ) : (
-                          <div className="d-flex align-items-center justify-content-center h-100 bg-light text-muted opacity-50">
-                            <i className="bi bi-image fs-1"></i>
-                          </div>
-                        )}
-                        {(article.video || article.videoUrl) && (
-                          <div className="position-absolute top-50 start-50 translate-middle text-white fs-1" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-                            <i className="bi bi-play-circle-fill"></i>
-                          </div>
-                        )}
-                      </div>
-                      <div className="featured-news-body" style={{ padding: '10px 15px', flexGrow: 1, display: 'flex', flexDirection: 'column', justifycontent: 'space-between' }}>
+                      <VideoNewsThumbnail article={article} isFeatured={true} imgHeight="160px" />
+                      <div className="featured-news-body" style={{ padding: '10px 15px', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                         <div>
                           <Badge bg="light" text="danger" className="mb-1 fw-black text-uppercase x-small border border-danger border-opacity-25" style={{ display: 'inline-block' }}>
                             {article.category || 'News'}
@@ -134,7 +147,7 @@ const CategoryPage = ({ categoryOverride }) => {
                           <i className="bi bi-person-fill me-1"></i>
                           {article.author || 'Editorial'}
                           <span className="mx-2">•</span>
-                          {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : (article.date || 'Today')}
+                          {getRelativeTime(article.createdAt || article.date)}
                         </div>
                       </div>
                     </Link>
@@ -142,64 +155,109 @@ const CategoryPage = ({ categoryOverride }) => {
                 })}
 
                 {/* IN-FEED AD REPLACING SECOND FEATURED CARD */}
-                <div className="featured-news-card d-flex align-items-center justify-content-center" style={{ height: '280px', overflow: 'hidden', padding: '0' }}>
-                  <Advertisement slot="in-feed-rectangle" />
-                </div>
+                {!isMobile && (
+                  <div className="d-flex align-items-center justify-content-center" style={{ height: '280px', overflow: 'hidden', padding: '0' }}>
+                    <Advertisement slot="in-feed-rectangle" />
+                  </div>
+                )}
 
-                {/* News 2 and News 3 */}
-                {featuredArticles.slice(1, 3).map((article) => {
-                  const articleImg = getImageUrl(article.image || article.imageUrl);
-                  const articleLink = `/article/${createSlug(article.category || 'news')}/${createSlug(article.title)}/${article.id}`;
-                  return (
-                    <Link 
-                      to={articleLink} 
-                      key={article.id} 
-                      className="featured-news-card" 
-                      style={{ height: '280px', display: 'flex', flexDirection: 'column' }}
-                    >
-                      <div className="featured-news-thumb" style={{ height: '150px', aspectRatio: 'auto' }}>
-                        {articleImg ? (
-                          <img src={articleImg} alt={article.title} className="featured-news-img" />
-                        ) : (
-                          <div className="d-flex align-items-center justify-content-center h-100 bg-light text-muted opacity-50">
-                            <i className="bi bi-image fs-1"></i>
-                          </div>
-                        )}
-                        {(article.video || article.videoUrl) && (
-                          <div className="position-absolute top-50 start-50 translate-middle text-white fs-1" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-                            <i className="bi bi-play-circle-fill"></i>
-                          </div>
-                        )}
+                {/* Rotating Slot 1 (News 2) */}
+                {article1 && (
+                  <Link
+                    to={`/article/${createSlug(article1.category || 'news')}/${createSlug(article1.title)}`}
+                    key={`rotate-slot1-${article1.id}`}
+                    className="featured-news-card rotating-news-card"
+                    style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                  >
+                    <VideoNewsThumbnail article={article1} imgHeight="160px" />
+                    <div className="featured-news-body" style={{ padding: '10px 15px', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <Badge bg="light" text="danger" className="mb-1 fw-black text-uppercase x-small border border-danger border-opacity-25" style={{ display: 'inline-block' }}>
+                          {article1.category || 'News'}
+                        </Badge>
+                        <h3 className="featured-news-title" style={{ fontSize: '1.05rem', marginBottom: '4px', fontWeight: '800', lineHeight: '1.3' }}>{article1.title}</h3>
                       </div>
-                      <div className="featured-news-body" style={{ padding: '10px 15px', flexGrow: 1, display: 'flex', flexDirection: 'column', justifycontent: 'space-between' }}>
+                      <div className="featured-news-meta">
+                        <i className="bi bi-person-fill me-1"></i>
+                        {article1.author || 'Editorial'}
+                        <span className="mx-2">•</span>
+                        {getRelativeTime(article1.createdAt || article1.date)}
+                      </div>
+                    </div>
+                  </Link>
+                )}
+
+                {/* Rotating Slot 2 (News 3) */}
+                {article2 ? (
+                  <Link
+                    to={`/article/${createSlug(article2.category || 'news')}/${createSlug(article2.title)}`}
+                    key={`rotate-slot2-${article2.id}`}
+                    className="featured-news-card rotating-news-card"
+                    style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                  >
+                    <VideoNewsThumbnail article={article2} imgHeight="160px" />
+                    <div className="featured-news-body" style={{ padding: '10px 15px', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <Badge bg="light" text="danger" className="mb-1 fw-black text-uppercase x-small border border-danger border-opacity-25" style={{ display: 'inline-block' }}>
+                          {article2.category || 'News'}
+                        </Badge>
+                        <h3 className="featured-news-title" style={{ fontSize: '1.05rem', marginBottom: '4px', fontWeight: '800', lineHeight: '1.3' }}>{article2.title}</h3>
+                      </div>
+                      <div className="featured-news-meta">
+                        <i className="bi bi-person-fill me-1"></i>
+                        {article2.author || 'Editorial'}
+                        <span className="mx-2">•</span>
+                        {getRelativeTime(article2.createdAt || article2.date)}
+                      </div>
+                    </div>
+                  </Link>
+                ) : (
+                  featuredArticles[2] && (
+                    <Link
+                      to={`/article/${createSlug(featuredArticles[2].category || 'news')}/${createSlug(featuredArticles[2].title)}`}
+                      key={featuredArticles[2].id}
+                      className="featured-news-card"
+                      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+                    >
+                      <VideoNewsThumbnail article={featuredArticles[2]} imgHeight="160px" />
+                      <div className="featured-news-body" style={{ padding: '10px 15px', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                         <div>
                           <Badge bg="light" text="danger" className="mb-1 fw-black text-uppercase x-small border border-danger border-opacity-25" style={{ display: 'inline-block' }}>
-                            {article.category || 'News'}
+                            {featuredArticles[2].category || 'News'}
                           </Badge>
-                          <h3 className="featured-news-title" style={{ fontSize: '1.05rem', marginBottom: '4px', fontWeight: '800', lineHeight: '1.3' }}>{article.title}</h3>
+                          <h3 className="featured-news-title" style={{ fontSize: '1.05rem', marginBottom: '4px', fontWeight: '800', lineHeight: '1.3' }}>{featuredArticles[2].title}</h3>
                         </div>
                         <div className="featured-news-meta">
                           <i className="bi bi-person-fill me-1"></i>
-                          {article.author || 'Editorial'}
+                          {featuredArticles[2].author || 'Editorial'}
                           <span className="mx-2">•</span>
-                          {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : (article.date || 'Today')}
+                          {getRelativeTime(featuredArticles[2].createdAt || featuredArticles[2].date)}
                         </div>
                       </div>
                     </Link>
-                  );
-                })}
+                  )
+                )}
               </>
             )}
           </div>
 
-          {/* STANDARD LATEST STORIES */}
+          <style>{`
+            @keyframes rotatingNewsSlide {
+              0% { opacity: 0; transform: translateX(30px); }
+              100% { opacity: 1; transform: translateX(0); }
+            }
+            .rotating-news-card {
+              animation: rotatingNewsSlide 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+          `}</style>
+
+          {/* ALL REMAINING NEWS (with infinite scroll) */}
           <div className="news-grid-2col">
-            {standardArticles.length > 0
-              ? standardArticles.reduce((acc, article, index) => {
+            {remainingArticles.length > 0
+              ? remainingArticles.map((article) => {
                   const articleImg = getImageUrl(article.image || article.imageUrl);
-                  const articleLink = `/article/${createSlug(article.category || 'news')}/${createSlug(article.title)}/${article.id}`;
-                  
-                  acc.push(
+                  const articleLink = `/article/${createSlug(article.category || 'news')}/${createSlug(article.title)}`;
+                  return (
                     <Link to={articleLink} key={article.id} className="news-grid-card">
                       <div className="news-grid-thumb">
                         {articleImg ? (
@@ -221,18 +279,15 @@ const CategoryPage = ({ categoryOverride }) => {
                         <div className="news-grid-meta">
                           <i className="bi bi-person-fill me-1"></i>
                           {article.author ? (
-                            <span className="text-muted hover-text-red">
-                              {article.author}
-                            </span>
+                            <span className="text-muted hover-text-red">{article.author}</span>
                           ) : 'Editorial'}
                           <span className="mx-1">·</span>
-                          {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : (article.date || 'Today')}
+                          {getRelativeTime(article.createdAt || article.date)}
                         </div>
                       </div>
                     </Link>
                   );
-                  return acc;
-                }, [])
+                })
               : featuredArticles.length === 0 && (
                 <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
                   <i className="bi bi-info-circle fs-3 d-block mb-2 opacity-50"></i>
@@ -263,10 +318,8 @@ const CategoryPage = ({ categoryOverride }) => {
         </Col>
       </Row>
 
-      {/* ── TOP / BOTTOM BANNER (970 × 90) ── */}
-      <div className="d-none d-xl-block mt-4 mb-0 text-center">
-        <Advertisement slot="top-bottom-banner" />
-      </div>
+
+
 
       {/* MOBILE STICKY BOTTOM BANNER — 320×50 */}
       <MobileStickyAd category={category} />

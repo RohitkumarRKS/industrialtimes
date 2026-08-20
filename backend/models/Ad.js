@@ -17,9 +17,11 @@ const Ad = sequelize.define('Ad', {
       'top-bottom-banner', // 970 × 90  — large horizontal banner
       'in-feed-rectangle', // 336 × 280 — inline within news feed grids
       'inline-news-footer', // 728 × 90  — inline at bottom of news articles
-      'mobile-banner',     // 300 × 100
+      'mobile-banner',     // 300 × 50
       'mobile-rectangle',  // 300 × 250
-      'mobile-inline'      // 300 × 200
+      'mobile-inline',     // 300 × 200
+      'colombia-ad',       // 728 × 90
+      'mobile-leaderboard' // 300 × 100
     ),
     allowNull: false,
     defaultValue: 'leaderboard'

@@ -20,8 +20,8 @@ const PopupAd = () => {
     }
     const fetchPopupAd = async () => {
       try {
-        const state = sessionStorage.getItem('detectedState') || '';
-        const city = sessionStorage.getItem('detectedCity') || '';
+        const state = localStorage.getItem('detectedState') || '';
+        const city = localStorage.getItem('detectedCity') || '';
         const params = new URLSearchParams();
         if (state) params.append('state', state);
         if (city) params.append('city', city);

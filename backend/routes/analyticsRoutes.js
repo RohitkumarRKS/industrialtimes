@@ -9,12 +9,14 @@ router.get('/7days', async (req, res) => {
   try {
     const today = new Date();
     const past7Days = new Date(today);
-    past7Days.setDate(today.getDate() - 6); // Include today + 6 previous days
+    past7Days.setDate(today.getDate() - 6);
+
+    const dateStr = past7Days.toISOString().split('T')[0];
 
     const analytics = await SiteAnalytics.findAll({
       where: {
         date: {
-          [Op.gte]: past7Days.toISOString().split('T')[0]
+          [Op.gte]: dateStr
         }
       },
       order: [['date', 'ASC']]
@@ -27,13 +29,13 @@ router.get('/7days', async (req, res) => {
     for (let i = 0; i <= 6; i++) {
       const d = new Date(past7Days);
       d.setDate(past7Days.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
+      const ds = d.toISOString().split('T')[0];
       const dayName = daysOfWeek[d.getDay()];
 
-      const existingRecord = analytics.find(a => a.date === dateStr);
+      const existingRecord = analytics.find(a => a.date === ds);
       
       sevenDayMap.push({
-        date: dateStr,
+        date: ds,
         day: dayName,
         totalViews: existingRecord ? existingRecord.totalViews : 0,
         uniqueVisitors: existingRecord ? existingRecord.uniqueVisitors : 0

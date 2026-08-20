@@ -123,7 +123,7 @@ const UpgradePlan = () => {
 
       // 2. Open Razorpay Checkout
       const options = {
-        key: 'rzp_test_placeholder', // Should be process.env.REACT_APP_RAZORPAY_KEY_ID
+        key: 'rzp_live_SwnZMgoy1Uy9zu', 
         amount: orderData.amount,
         currency: orderData.currency,
         name: "Industrial Times",
@@ -200,7 +200,7 @@ const UpgradePlan = () => {
               onClick={() => setBillingCycle('yearly')}
             >
               Yearly
-              <Badge bg="success" className="position-absolute top-0 start-100 translate-middle rounded-pill" style={{ fontSize: '0.6rem' }}>8% OFF</Badge>
+              <Badge bg="success" className="position-absolute top-0 start-100 translate-middle rounded-pill" style={{ fontSize: '0.6rem' }}>10% OFF</Badge>
             </Button>
           </div>
         </div>

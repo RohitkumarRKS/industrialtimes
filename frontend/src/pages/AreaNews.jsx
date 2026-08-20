@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import Advertisement from '../components/Advertisement';
 import MobileStickyAd from '../components/MobileStickyAd';
 import API_BASE from '../config/api';
+import { createSlug } from '../utils/slugify';
+import { getRelativeTime } from '../utils/timeFormatter';
 
 const AreaNews = () => {
   const [detectedState, setDetectedState] = useState('');
@@ -29,11 +31,11 @@ const AreaNews = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [articles.length]);
 
-  // Auto-detect location from sessionStorage (set by Navigation component)
+  // Auto-detect location from localStorage (set by Navigation component)
   useEffect(() => {
     const checkLocation = () => {
-      const state = sessionStorage.getItem('detectedState');
-      const city = sessionStorage.getItem('detectedCity');
+      const state = localStorage.getItem('detectedState');
+      const city = localStorage.getItem('detectedCity');
       if (state) {
         setDetectedState(state);
         setDetectedCity(city || '');
@@ -50,7 +52,7 @@ const AreaNews = () => {
         attempts++;
         if (checkLocation() || attempts >= 20) {
           clearInterval(retryTimer);
-          if (attempts >= 20 && !sessionStorage.getItem('detectedState')) {
+          if (attempts >= 20 && !localStorage.getItem('detectedState')) {
             // Fallback if location detection failed
             setDetectedState('Jharkhand');
             setDetectedCity('Jamshedpur');
@@ -81,7 +83,7 @@ const AreaNews = () => {
     fetchNews();
   }, [detectedState]);
 
-  const createSlug = (text) => text.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+
   const getImageUrl = (img) => {
     if (!img) return null;
     if (img.startsWith('http')) return img;
@@ -111,7 +113,7 @@ const AreaNews = () => {
              <div className="news-grid-2col">
                {articles.slice(0, visibleCount).map((article) => {
                  const articleImg = getImageUrl(article.image || article.imageUrl);
-                 const articleLink = `/article/${createSlug(article.category || 'news')}/${createSlug(article.title)}/${article.id}`;
+                 const articleLink = `/article/${createSlug(article.category || 'news')}/${createSlug(article.title)}`;
                  return (
                     <Link to={articleLink} key={article.id} className="news-grid-card position-relative">
                       <div className="news-grid-thumb">
@@ -141,7 +143,7 @@ const AreaNews = () => {
                             </Link>
                           ) : 'Editorial'}
                           <span className="mx-1">·</span>
-                          {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : (article.date || 'Today')}
+                          {getRelativeTime(article.createdAt || article.date)}
                         </div>
                       </div>
                     </Link>

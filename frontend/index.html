@@ -1,37 +1,149 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" href="/icon.png" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <!-- Default OG Tags for social media crawlers (overridden by react-helmet on each page) -->
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Industrial Times Network" />
-    <meta property="og:title" content="Industrial Times Network — India's Digital Industrial Media Platform" />
-    <meta property="og:description" content="India's growing digital industrial media platform delivering industrial news, business promotions, startup stories, podcast interviews, and event coverage." />
-    <meta property="og:image" content="/industrialtimes_white.png" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Industrial Times Network" />
-    <meta name="twitter:description" content="India's leading digital industrial media platform." />
-    
-    <title>Industrial Times</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="text/javascript">
-      function googleTranslateElementInit() {
-        new google.translate.TranslateElement(
-          {pageLanguage: 'en', includedLanguages: 'en,hi', layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, 
-          'google_translate_element'
-        );
-      }
-    </script>
-    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+<head>
+  <meta name="google" content="notranslate" />
+  <!-- Google AdSense -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3984464028103389"
+    crossorigin="anonymous"></script>
+  <meta name="google-adsense-account" content="ca-pub-3984464028103389">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="canonical" href="https://industrialtimes.in/" />
+  <link rel="icon" type="image/png" href="/icon.png" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    crossorigin="anonymous">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
+  <!-- Default OG Tags for social media crawlers (overridden by react-helmet on each page) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Industrial Times" />
+  <meta property="og:title" content="Industrial Times — India's Digital Industrial Media Platform" />
+  <meta property="og:description"
+    content="India's growing digital industrial media platform delivering industrial news, business promotions, startup stories, podcast interviews, and event coverage." />
+  <meta property="og:image" content="/industrialtimes_white.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Industrial Times" />
+  <meta name="twitter:description" content="India's leading digital industrial media platform." />
+
+
+  <!-- Google Analytics (gtag.js) — Measurement ID: G-P5M643PL4W -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-P5M643PL4W"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-P5M643PL4W');
+  </script>
+
+  <style>
+    /* Completely hide Google Translate top bar and tooltips */
+    iframe.goog-te-banner-frame,
+    .goog-te-banner-frame,
+    .goog-te-banner,
+    #goog-gt-tt,
+    #goog-te-translations,
+    .goog-te-balloon-frame,
+    #\:0\.container,
+    [id*="0.container"],
+    iframe[id*="translate"],
+    .skiptranslate {
+      display: none !important;
+      visibility: hidden !important;
+    }
+
+    html {
+      margin-top: 0px !important;
+    }
+
+    body {
+      top: 0px !important;
+      position: static !important;
+    }
+
+    /* Hide translation tooltip on hover */
+    .goog-tooltip,
+    .goog-tooltip:hover {
+      display: none !important;
+    }
+
+    .goog-text-highlight {
+      background-color: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+  </style>
+  <title>Industrial Times</title>
+</head>
+
+<body>
+  <div id="google_translate_element" style="display: none;"></div>
+  <div id="root"></div>
+  <noscript>
+    <div style="max-width: 1200px; margin: 0 auto; padding: 40px 20px; font-family: 'Inter', sans-serif;">
+      <h1>Industrial Times — India's Digital Industrial Media Platform</h1>
+      <p>India's growing digital industrial media platform delivering industrial news, business promotions, startup stories, podcast interviews, and event coverage.</p>
+      <h2>Our Sections</h2>
+      <nav>
+        <ul>
+          <li><a href="/news">News</a></li>
+          <li><a href="/articles">Articles</a></li>
+          <li><a href="/trending">Trending</a></li>
+          <li><a href="/business">Business</a></li>
+          <li><a href="/startup">Startups</a></li>
+          <li><a href="/manufacturing">Manufacturing</a></li>
+          <li><a href="/automation">Automation</a></li>
+          <li><a href="/oem">OEM</a></li>
+          <li><a href="/interview">Interviews</a></li>
+          <li><a href="/event">Events</a></li>
+          <li><a href="/tender">Tenders</a></li>
+          <li><a href="/education">Education</a></li>
+          <li><a href="/entertainment">Entertainment</a></li>
+          <li><a href="/sports">Sports</a></li>
+          <li><a href="/astrology">Astrology</a></li>
+          <li><a href="/acquisitions">Acquisitions</a></li>
+          <li><a href="/regional">Regional News</a></li>
+          <li><a href="/magazine">Magazine</a></li>
+          <li><a href="/webinars">Webinars</a></li>
+        </ul>
+      </nav>
+      <h2>About Industrial Times</h2>
+      <p>Industrial Times is a digital news and media platform dedicated to delivering accurate, timely, and insightful coverage of industry, business, manufacturing, automation, technology, startups, infrastructure, energy, and economic developments from India and around the world. Our mission is to bridge the gap between industries, businesses, innovators, policymakers, and professionals by providing reliable news, expert insights, interviews, market trends, and industry-focused analysis.</p>
+      <p>Industrial Times is a digital media initiative supported by Radiogeet Digital Pvt. Ltd.</p>
+      <h2>Important Links</h2>
+      <ul>
+        <li><a href="/about">About Us</a></li>
+        <li><a href="/contact">Contact Us</a></li>
+        <li><a href="/careers">Careers</a></li>
+        <li><a href="/press">Press Releases</a></li>
+        <li><a href="/privacy">Privacy Policy</a></li>
+        <li><a href="/terms">Terms &amp; Conditions</a></li>
+        <li><a href="/disclaimer">Disclaimer</a></li>
+        <li><a href="/grievance">Grievance Redressal</a></li>
+        <li><a href="/advertisement">Advertise With Us</a></li>
+        <li><a href="/media-partnership">Media Partnership</a></li>
+        <li><a href="/rss">RSS Feeds</a></li>
+        <li><a href="/sitemap">Sitemap</a></li>
+      </ul>
+      <p>Contact: info@industrialtimes.in | WhatsApp: +91 7903451885</p>
+      <p>&copy; 2024-2026 Radiogeet Digital Pvt. Ltd. All Rights Reserved.</p>
+    </div>
+  </noscript>
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement(
+        { pageLanguage: 'en', includedLanguages: 'en,hi,bn,mr,gu,kn,ta,te,ml', layout: google.translate.TranslateElement.InlineLayout.SIMPLE },
+        'google_translate_element'
+      );
+    }
+  </script>
+  <script type="text/javascript"
+    src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
 </html>

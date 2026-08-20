@@ -37,7 +37,25 @@ const ManagePodcast = () => {
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoSourceType, setVideoSourceType] = useState('upload'); // 'upload' or 'url'
 
+  // Payment Settings state
+  const [paymentConfig, setPaymentConfig] = useState({
+    podcast_entry_fee: '999',
+    podcast_gst_rate: '18',
+    podcast_payment_enabled: 'true'
+  });
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [paymentSaveMsg, setPaymentSaveMsg] = useState('');
+
   const podcastApplyUrl = `${window.location.origin}/podcast-apply`;
+
+  const getHeaders = () => {
+    try {
+      const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || localStorage.getItem('userInfo'));
+      return adminInfo?.token ? { headers: { Authorization: `Bearer ${adminInfo.token}` } } : {};
+    } catch (e) {
+      return {};
+    }
+  };
 
   const fetchGuests = async () => {
     try {
@@ -83,6 +101,39 @@ const ManagePodcast = () => {
       console.error('Error fetching episodes:', err);
     } finally {
       setLoadingEpisodes(false);
+    }
+  };
+
+  const fetchPaymentConfig = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/platform-settings`, getHeaders());
+      if (res.data && res.data.settings) {
+        const s = res.data.settings;
+        setPaymentConfig({
+          podcast_entry_fee: s.podcast_entry_fee?.value || '999',
+          podcast_gst_rate: s.podcast_gst_rate?.value || '18',
+          podcast_payment_enabled: s.podcast_payment_enabled?.value || 'true'
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching payment config:', err);
+    }
+  };
+
+  const handleSavePaymentConfig = async (e) => {
+    e.preventDefault();
+    setSavingPayment(true);
+    setPaymentSaveMsg('');
+    try {
+      await axios.put(`${API_BASE}/api/platform-settings`, {
+        settings: paymentConfig
+      }, getHeaders());
+      setPaymentSaveMsg('✅ Payment settings saved successfully!');
+      setTimeout(() => setPaymentSaveMsg(''), 3000);
+    } catch (err) {
+      setPaymentSaveMsg('❌ Failed to save payment settings.');
+    } finally {
+      setSavingPayment(false);
     }
   };
 
@@ -147,6 +198,7 @@ const ManagePodcast = () => {
     fetchFields();
     fetchSettings();
     fetchEpisodes();
+    fetchPaymentConfig();
   }, []);
 
   const handleStatusUpdate = async (id, status) => {
@@ -291,6 +343,14 @@ const ManagePodcast = () => {
     }
   };
 
+  const getPaymentBadge = (paymentStatus) => {
+    switch (paymentStatus) {
+      case 'completed': return <Badge bg="success"><i className="bi bi-check-circle-fill me-1"></i>Paid</Badge>;
+      case 'pending': return <Badge bg="warning" text="dark"><i className="bi bi-clock-fill me-1"></i>Pending</Badge>;
+      default: return <Badge bg="secondary"><i className="bi bi-dash-circle me-1"></i>Free</Badge>;
+    }
+  };
+
   if (loading) {
     return (
       <Container className="py-5 text-center">
@@ -324,6 +384,7 @@ const ManagePodcast = () => {
                 <tr>
                   <th className="border-0 px-4 py-3 small text-uppercase fw-bold">Guest Name</th>
                   <th className="border-0 py-3 small text-uppercase fw-bold">Contact Info</th>
+                  <th className="border-0 py-3 small text-uppercase fw-bold">Payment</th>
                   <th className="border-0 py-3 small text-uppercase fw-bold">Status</th>
                   <th className="border-0 px-4 py-3 small text-uppercase fw-bold text-end">Actions</th>
                 </tr>
@@ -340,6 +401,7 @@ const ManagePodcast = () => {
                         <div className="small"><i className="bi bi-envelope-fill text-danger me-1"></i> {guest.email}</div>
                         <div className="small"><i className="bi bi-telephone-fill text-muted me-1"></i> {guest.phone}</div>
                       </td>
+                      <td>{getPaymentBadge(guest.paymentStatus)}</td>
                       <td>{getStatusBadge(guest.status)}</td>
                       <td className="px-4 text-end">
                         <div className="d-flex gap-2 justify-content-end">
@@ -368,7 +430,7 @@ const ManagePodcast = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" className="text-center py-5 text-muted italic">
+                    <td colSpan="6" className="text-center py-5 text-muted italic">
                       No podcast guest registrations found.
                     </td>
                   </tr>
@@ -674,6 +736,109 @@ const ManagePodcast = () => {
             </Col>
           </Row>
         </Tab>
+
+        <Tab eventKey="payment" title={<><i className="bi bi-credit-card me-1"></i>Payment Settings</>}>
+          <Row>
+            <Col lg={6}>
+              <Card className="border-0 shadow-sm rounded-4 mb-4">
+                <Card.Header className="bg-white border-bottom-0 pt-4 pb-0">
+                  <h5 className="fw-black mb-0"><i className="bi bi-gear-fill me-2 text-danger"></i>Podcast Payment Configuration</h5>
+                  <p className="text-muted small">Set the registration fee and GST for podcast guest applications.</p>
+                </Card.Header>
+                <Card.Body>
+                  {paymentSaveMsg && (
+                    <div className={`alert ${paymentSaveMsg.startsWith('✅') ? 'alert-success' : 'alert-danger'} py-2 small fw-bold`}>
+                      {paymentSaveMsg}
+                    </div>
+                  )}
+                  <Form onSubmit={handleSavePaymentConfig}>
+                    <Form.Group className="mb-4">
+                      <Form.Label className="fw-bold">Enable Payment for Podcast</Form.Label>
+                      <Form.Check
+                        type="switch"
+                        id="podcast-payment-toggle"
+                        label={paymentConfig.podcast_payment_enabled === 'true' ? 'Payment Enabled (Users must pay to apply)' : 'Payment Disabled (Free applications)'}
+                        checked={paymentConfig.podcast_payment_enabled === 'true'}
+                        onChange={(e) => setPaymentConfig({...paymentConfig, podcast_payment_enabled: e.target.checked ? 'true' : 'false'})}
+                        className="mb-2"
+                      />
+                      <Form.Text className="text-muted">When disabled, users can apply without any payment.</Form.Text>
+                    </Form.Group>
+
+                    <Row className="mb-4">
+                      <Form.Group as={Col} md={6} className="mb-3 mb-md-0">
+                        <Form.Label className="fw-bold">Base Entry Fee (₹)</Form.Label>
+                        <Form.Control
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={paymentConfig.podcast_entry_fee}
+                          onChange={(e) => setPaymentConfig({...paymentConfig, podcast_entry_fee: e.target.value})}
+                          required
+                          disabled={paymentConfig.podcast_payment_enabled !== 'true'}
+                        />
+                        <Form.Text className="text-muted">Base registration amount before GST</Form.Text>
+                      </Form.Group>
+                      <Form.Group as={Col} md={6}>
+                        <Form.Label className="fw-bold">GST Rate (%)</Form.Label>
+                        <Form.Control
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.5"
+                          value={paymentConfig.podcast_gst_rate}
+                          onChange={(e) => setPaymentConfig({...paymentConfig, podcast_gst_rate: e.target.value})}
+                          required
+                          disabled={paymentConfig.podcast_payment_enabled !== 'true'}
+                        />
+                        <Form.Text className="text-muted">CGST + SGST percentage</Form.Text>
+                      </Form.Group>
+                    </Row>
+
+                    <Button variant="danger" type="submit" className="px-4 py-2 rounded-pill fw-bold" disabled={savingPayment}>
+                      {savingPayment ? 'Saving...' : <><i className="bi bi-check-lg me-2"></i>Save Payment Settings</>}
+                    </Button>
+                  </Form>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col lg={6}>
+              <Card className="border-0 shadow-sm rounded-4 mb-4">
+                <Card.Header className="bg-white border-bottom-0 pt-4 pb-0">
+                  <h5 className="fw-black mb-0"><i className="bi bi-receipt me-2 text-success"></i>Live Price Preview</h5>
+                  <p className="text-muted small">This is what the user will see on the payment screen.</p>
+                </Card.Header>
+                <Card.Body>
+                  {paymentConfig.podcast_payment_enabled === 'true' ? (
+                    <div style={{ background: '#0f172a', borderRadius: '16px', padding: '28px', color: '#f8fafc' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.85rem' }}>
+                        <span style={{ color: '#94a3b8' }}>Base Registration Fee</span>
+                        <span style={{ fontWeight: 700 }}>₹{parseFloat(paymentConfig.podcast_entry_fee || 0).toFixed(2)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.85rem' }}>
+                        <span style={{ color: '#94a3b8' }}>CGST + SGST ({paymentConfig.podcast_gst_rate}%)</span>
+                        <span style={{ fontWeight: 700 }}>₹{(parseFloat(paymentConfig.podcast_entry_fee || 0) * parseFloat(paymentConfig.podcast_gst_rate || 0) / 100).toFixed(2)}</span>
+                      </div>
+                      <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '16px 0' }} />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                        <span style={{ fontWeight: 900, color: '#cbd5e1' }}>Total (GST Included)</span>
+                        <span style={{ fontSize: '2rem', fontWeight: 900, color: '#da251d' }}>
+                          ₹{Math.round(parseFloat(paymentConfig.podcast_entry_fee || 0) * (1 + parseFloat(paymentConfig.podcast_gst_rate || 0) / 100))}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-5">
+                      <i className="bi bi-unlock display-4 text-muted d-block mb-3" style={{ opacity: 0.3 }}></i>
+                      <p className="fw-bold text-muted">Payment is currently disabled.</p>
+                      <p className="small text-muted">Users can apply for podcast guest spots without any payment.</p>
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        </Tab>
       </Tabs>
 
       {/* Guest Details Modal */}
@@ -731,6 +896,22 @@ const ManagePodcast = () => {
                 <label className="text-muted small text-uppercase fw-bold mb-1">Current Status</label>
                 <div>{getStatusBadge(selectedGuest.status)}</div>
               </div>
+              <div className="col-md-6 mt-4">
+                <label className="text-muted small text-uppercase fw-bold mb-1">Payment Status</label>
+                <div>{getPaymentBadge(selectedGuest.paymentStatus)}</div>
+              </div>
+              {selectedGuest.paymentStatus === 'completed' && (
+                <>
+                  <div className="col-md-6 mt-3">
+                    <label className="text-muted small text-uppercase fw-bold mb-1">Amount Paid</label>
+                    <div className="h6 fw-bold text-success">₹{parseFloat(selectedGuest.amountPaid || 0).toFixed(2)}</div>
+                  </div>
+                  <div className="col-md-6 mt-3">
+                    <label className="text-muted small text-uppercase fw-bold mb-1">Transaction ID</label>
+                    <div className="h6 fw-bold" style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{selectedGuest.transactionId || 'N/A'}</div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </Modal.Body>

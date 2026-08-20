@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const EmailSettings = require('../models/EmailSettings');
+const EmailLog = require('../models/EmailLog');
 
 const createTransporter = () => {
   const host = process.env.SMTP_HOST;
@@ -12,11 +13,19 @@ const createTransporter = () => {
     return null;
   }
 
+  console.log(`📧 Creating SMTP transporter: host=${host}, port=${port}, user=${user}`);
+
   return nodemailer.createTransport({
     host,
-    port: parseInt(port) || 587,
+    port: parseInt(port) || 465,
     secure: parseInt(port) === 465,
-    auth: { user, pass }
+    auth: { user, pass },
+    tls: {
+      rejectUnauthorized: false
+    },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000
   });
 };
 
@@ -35,7 +44,7 @@ const sendEmail = async (to, subject, htmlContent) => {
 
   let adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER;
   try {
-    const [settings] = await EmailSettings.findOrCreate({ where: { id: 1 } });
+    const settings = await EmailSettings.findOne();
     if (settings && settings.adminEmail) {
       adminEmail = settings.adminEmail;
     }
@@ -52,9 +61,30 @@ const sendEmail = async (to, subject, htmlContent) => {
       html: htmlContent
     });
     console.log(`✅ Email sent successfully to ${to}`);
+    try {
+      await EmailLog.create({
+        toEmail: to,
+        subject,
+        status: 'sent',
+        type: 'system_notification'
+      });
+    } catch (logErr) {
+      console.error('Failed to create EmailLog record:', logErr.message);
+    }
     return true;
   } catch (err) {
     console.error('❌ Email send failed:', err.message);
+    try {
+      await EmailLog.create({
+        toEmail: to,
+        subject,
+        status: 'failed',
+        errorMessage: err.message,
+        type: 'system_notification'
+      });
+    } catch (logErr) {
+      console.error('Failed to create EmailLog record:', logErr.message);
+    }
     return false;
   }
 };

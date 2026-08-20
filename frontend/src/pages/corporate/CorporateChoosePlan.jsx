@@ -9,6 +9,20 @@ const CorporateChoosePlan = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [selectedPlanForTerms, setSelectedPlanForTerms] = useState(null);
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+  const [isCheckedRead, setIsCheckedRead] = useState(false);
+  const [isCheckedConfirm, setIsCheckedConfirm] = useState(false);
+
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    // Check if scrolled near the bottom (within 20px)
+    if (scrollHeight - scrollTop - clientHeight < 20) {
+      setHasScrolledToBottom(true);
+    }
+  };
+
   useEffect(() => {
     const fetchPlans = async () => {
       try {
@@ -56,7 +70,18 @@ const CorporateChoosePlan = () => {
   }, []);
 
   const handleSelectPlan = (plan) => {
-    navigate(`/corporate/login?plan=${plan.planKey}`);
+    setSelectedPlanForTerms(plan);
+    setShowTermsModal(true);
+    setHasScrolledToBottom(false);
+    setIsCheckedRead(false);
+    setIsCheckedConfirm(false);
+  };
+
+  const handleAcceptTerms = () => {
+    if (selectedPlanForTerms) {
+      setShowTermsModal(false);
+      navigate(`/corporate/login?plan=${selectedPlanForTerms.planKey}`);
+    }
   };
 
   const getPrice = (plan) => {
@@ -72,7 +97,257 @@ const CorporateChoosePlan = () => {
   };
 
   return (
-    <div className="corporate-choose-plan-page">
+    <>
+      {/* Terms of Use Modal for Corporate Plan Registration */}
+      {showTermsModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(15, 23, 42, 0.95)', backdropFilter: 'blur(10px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, color: '#fff', padding: '1rem'
+        }}>
+          <div style={{
+            background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+            padding: '2rem', borderRadius: '24px', maxWidth: '600px', width: '100%',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.1)',
+            display: 'flex', flexDirection: 'column', maxHeight: '95vh'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, color: '#f8fafc' }}>
+                Corporate Terms of Use
+              </h3>
+              <button 
+                type="button"
+                onClick={() => {
+                  setShowTermsModal(false);
+                  setSelectedPlanForTerms(null);
+                }}
+                style={{
+                  background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer'
+                }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div 
+              onScroll={handleScroll}
+              style={{
+                overflowY: 'auto', maxHeight: '50vh', padding: '1.2rem',
+                background: 'rgba(0, 0, 0, 0.25)', borderRadius: '12px',
+                border: '1px solid rgba(255,255,255,0.05)', textAlign: 'left'
+              }}
+            >
+              <style dangerouslySetInnerHTML={{ __html: `
+                .corporate-terms-box p, .corporate-terms-box ul, .corporate-terms-box li, .corporate-terms-box span {
+                  font-size: 8pt !important;
+                  line-height: 1.4;
+                  color: #cbd5e1 !important;
+                }
+                .corporate-terms-box h2, .corporate-terms-box h3, .corporate-terms-box h4 {
+                  font-size: 10pt !important;
+                  font-weight: bold;
+                  margin-top: 15px;
+                  margin-bottom: 8px;
+                  color: #f8fafc !important;
+                }
+              ` }} />
+              <div className="corporate-terms-box">
+                <h2>Corporate Terms of Use</h2>
+                <p><strong>Last Updated: June 2026</strong></p>
+                
+                <h2>1. Introduction</h2>
+                <p>Welcome to Industrial Times Corporate Services. These Corporate Terms of Use govern the purchase and use of advertising, promotional, branding, media, public relations, interview, sponsored content, event coverage, lead generation, and other business services offered by Industrial Times. By purchasing or using any corporate service from Industrial Times, the client agrees to these Terms of Use.</p>
+
+                <h2>2. About Industrial Times</h2>
+                <p>Industrial Times is a digital news and media platform providing industry news, business insights, startup coverage, technology updates, corporate interviews, promotional campaigns, and digital media solutions for organizations across various sectors.</p>
+
+                <h2>3. Service Scope</h2>
+                <p>Corporate services may include:</p>
+                <ul>
+                  <li>Sponsored Articles</li>
+                  <li>Press Release Publishing</li>
+                  <li>Corporate Interviews</li>
+                  <li>Brand Promotion Campaigns</li>
+                  <li>Social Media Promotion</li>
+                  <li>Event Coverage</li>
+                  <li>Video and Podcast Features</li>
+                  <li>Business Listing Services</li>
+                  <li>Banner Advertising</li>
+                  <li>Lead Generation Campaigns</li>
+                  <li>Industry Recognition Programs</li>
+                  <li>Customized Marketing Solutions</li>
+                </ul>
+                <p>Industrial Times reserves the right to modify, expand, or discontinue services without prior notice.</p>
+
+                <h2>4. Client Responsibilities</h2>
+                <p>Clients agree to:</p>
+                <ul>
+                  <li>Provide accurate and lawful information.</li>
+                  <li>Submit content that does not violate intellectual property rights.</li>
+                  <li>Ensure all claims, data, and promotional materials are truthful and verifiable.</li>
+                  <li>Obtain necessary permissions, licenses, and approvals for submitted content.</li>
+                </ul>
+                <p>Clients shall be solely responsible for the accuracy of information provided.</p>
+
+                <h2>5. Content Review and Approval</h2>
+                <p>Industrial Times reserves the right to:</p>
+                <ul>
+                  <li>Review submitted content before publication.</li>
+                  <li>Edit content for grammar, formatting, clarity, and compliance.</li>
+                  <li>Reject content that is misleading, defamatory, illegal, offensive, or inconsistent with editorial standards.</li>
+                  <li>Request supporting documents for factual verification.</li>
+                </ul>
+                <p>Publication is subject to editorial review and approval.</p>
+
+                <h2>6. Sponsored and Promotional Content</h2>
+                <p>Sponsored content, advertisements, and promotional campaigns may be clearly identified as:</p>
+                <ul>
+                  <li>Sponsored</li>
+                  <li>Promotional</li>
+                  <li>Partner Content</li>
+                  <li>Advertisement</li>
+                  <li>Brand Feature</li>
+                </ul>
+                <p>Industrial Times maintains the right to ensure transparency for readers regarding paid content.</p>
+
+                <h2>7. Payment Terms</h2>
+                <ul>
+                  <li>All service fees must be paid according to the agreed proposal, quotation, invoice, or subscription plan.</li>
+                  <li>Services may commence only after payment confirmation unless otherwise agreed in writing.</li>
+                  <li>Payments made are generally non-refundable once work has commenced.</li>
+                  <li>Any applicable taxes shall be borne by the client.</li>
+                </ul>
+
+                <h2>8. Cancellation and Refund Policy</h2>
+                <ul>
+                  <li>Cancellation requests must be submitted in writing.</li>
+                  <li>Refund eligibility will depend on the stage of service delivery.</li>
+                  <li>No refunds shall be issued for completed publications, promotional campaigns, or services already delivered.</li>
+                  <li>Industrial Times reserves the right to determine refund eligibility on a case-by-case basis.</li>
+                </ul>
+
+                <h2>9. Intellectual Property</h2>
+                <p>Clients retain ownership of their trademarks, logos, and submitted materials. By engaging Industrial Times services, clients grant Industrial Times permission to:</p>
+                <ul>
+                  <li>Publish submitted content.</li>
+                  <li>Display company logos and promotional materials.</li>
+                  <li>Use campaign materials for service execution and portfolio purposes unless otherwise agreed.</li>
+                </ul>
+
+                <h2>10. Prohibited Activities</h2>
+                <p>Clients shall not use Industrial Times services to:</p>
+                <ul>
+                  <li>Promote illegal products or services.</li>
+                  <li>Publish false or misleading information.</li>
+                  <li>Engage in fraud, spam, or deceptive marketing practices.</li>
+                  <li>Violate applicable laws or regulations.</li>
+                  <li>Infringe third-party intellectual property rights.</li>
+                </ul>
+                <p>Industrial Times may terminate services immediately upon discovering violations.</p>
+
+                <h2>11. Limitation of Liability</h2>
+                <p>Industrial Times shall not be liable for:</p>
+                <ul>
+                  <li>Business losses.</li>
+                  <li>Revenue loss.</li>
+                  <li>Indirect or consequential damages.</li>
+                  <li>Decisions made by third parties based on published content.</li>
+                  <li>Search engine ranking fluctuations.</li>
+                  <li>Social media algorithm changes.</li>
+                </ul>
+                <p>All services are provided on a commercially reasonable effort basis.</p>
+
+                <h2>12. Service Availability</h2>
+                <p>While Industrial Times strives to provide uninterrupted services, we do not guarantee continuous availability of:</p>
+                <ul>
+                  <li>Website services</li>
+                  <li>Advertising systems</li>
+                  <li>Social media platforms</li>
+                  <li>Third-party integrations</li>
+                </ul>
+                <p>Temporary interruptions may occur due to maintenance, technical issues, or circumstances beyond our control.</p>
+
+                <h2>13. Indemnification</h2>
+                <p>Clients agree to indemnify and hold harmless Industrial Times, its management, employees, editors, partners, and affiliates from any claims, liabilities, damages, losses, or legal expenses arising from submitted content or misuse of services.</p>
+
+                <h2>14. Modification of Terms</h2>
+                <p>Industrial Times reserves the right to update these Terms of Use at any time. Continued use of corporate services constitutes acceptance of any revised terms.</p>
+
+                <h2>15. Contact Information</h2>
+                <p>
+                  <strong>Industrial Times</strong><br/>
+                  Website: https://industrialtimes.in<br/>
+                  Email: info@industrialtimes.in<br/>
+                  Phone: +91 7903451885<br/>
+                  Address: H.No. 79, Teachers Colony, Dimna Road, Mango, Jamshedpur, Jharkhand – 831012, India.
+                </p>
+
+                <h2>16. Acceptance of Terms</h2>
+                <p>By purchasing, subscribing to, or using any corporate service offered by Industrial Times, the client acknowledges that they have read, understood, and agreed to these Corporate Terms of Use.</p>
+              </div>
+            </div>
+
+            {/* Scroll Notice */}
+            {!hasScrolledToBottom && (
+              <div style={{ fontSize: '0.75rem', color: '#fbbf24', textAlign: 'center', marginTop: '0.8rem' }}>
+                <i className="bi bi-arrow-down-circle me-1"></i> Please scroll to the bottom to confirm terms.
+              </div>
+            )}
+
+            {/* Verification Checkboxes - Displayed only when user has scrolled to the bottom */}
+            {hasScrolledToBottom && (
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '1rem',
+                textAlign: 'left', width: '100%', padding: '10px 15px', borderRadius: '12px',
+                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)'
+              }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.75rem', cursor: 'pointer', color: '#cbd5e1', marginBottom: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={isCheckedRead}
+                    onChange={(e) => setIsCheckedRead(e.target.checked)}
+                    style={{ width: '16px', height: '16px', marginTop: '1px', cursor: 'pointer', accentColor: '#da251d' }}
+                  />
+                  <span>I have read the Corporate Terms of Use.</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.75rem', cursor: 'pointer', color: '#cbd5e1', marginBottom: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={isCheckedConfirm}
+                    onChange={(e) => setIsCheckedConfirm(e.target.checked)}
+                    style={{ width: '16px', height: '16px', marginTop: '1px', cursor: 'pointer', accentColor: '#da251d' }}
+                  />
+                  <span>I agree to confirm and abide by all corporate policies.</span>
+                </label>
+              </div>
+            )}
+
+            {/* Action Buttons - Enabled only when scrolled to bottom and checkboxes checked */}
+            <div style={{
+              display: 'flex', marginTop: '1.2rem', width: '100%',
+              opacity: (hasScrolledToBottom && isCheckedRead && isCheckedConfirm) ? 1 : 0.5,
+              pointerEvents: (hasScrolledToBottom && isCheckedRead && isCheckedConfirm) ? 'auto' : 'none',
+              transition: 'all 0.3s ease'
+            }}>
+              <button
+                type="button"
+                onClick={handleAcceptTerms}
+                style={{
+                  background: '#da251d', color: '#fff', border: 'none',
+                  padding: '12px 24px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: '700', cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(218, 37, 29, 0.2)', width: '100%', textAlign: 'center',
+                  transition: 'background 0.2s'
+                }}
+              >
+                Confirm &amp; Accept
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="corporate-choose-plan-page">
       {/* Floating Background Elements */}
       <div className="corp-bg-shapes">
         <div className="corp-bg-shape corp-bg-shape-1"></div>
@@ -114,7 +389,7 @@ const CorporateChoosePlan = () => {
             onClick={() => setBillingCycle('yearly')}
           >
             Yearly
-            <span className="corp-discount-badge">8% OFF</span>
+            <span className="corp-discount-badge">10% OFF</span>
           </button>
         </div>
       </div>
@@ -196,7 +471,7 @@ const CorporateChoosePlan = () => {
       </div>
 
       <div className="corp-plan-footer">
-        © {new Date().getFullYear()} Industrial Times Networks. All rights reserved.
+        © {new Date().getFullYear()} Industrial Times. All rights reserved.
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
@@ -447,7 +722,8 @@ const CorporateChoosePlan = () => {
           z-index: 2;
         }
       `}} />
-    </div>
+      </div>
+    </>
   );
 };
 

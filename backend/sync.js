@@ -5,6 +5,7 @@ require('./models/AdRequest');
 require('./models/EmailSettings');
 require('./models/EmailLog');
 require('./models/PodcastFormField');
+require('./models/PodcastGuest');
 require('./models/PodcastEpisode');
 require('./models/SeoSettings');
 require('./models/SiteAnalytics'); // Our new model
@@ -16,6 +17,14 @@ require('./models/User');
 require('./models/Plan');
 require('./models/Follower');
 require('./models/Rating');
+require('./models/AdPricing');
+require('./models/AdRevenue');
+require('./models/Withdrawal');
+require('./models/PlatformSettings');
+require('./models/AdAreaPricing');
+require('./models/Comment');
+require('./models/ManagerActivity');
+require('./models/PromoCode');
 
 const syncDatabase = async () => {
   try {

@@ -5,6 +5,8 @@ import { Helmet } from 'react-helmet-async';
 import Advertisement from '../components/Advertisement';
 import MobileStickyAd from '../components/MobileStickyAd';
 import API_BASE from '../config/api';
+import { createSlug } from '../utils/slugify';
+import { getRelativeTime } from '../utils/timeFormatter';
 
 const SearchPage = () => {
   const [results, setResults] = useState([]);
@@ -48,10 +50,31 @@ const SearchPage = () => {
         
         let filtered = data;
         if (query) {
-           filtered = data.filter(a => 
-            a.title.toLowerCase().includes(query.toLowerCase()) || 
-            (a.category && a.category.toLowerCase().includes(query.toLowerCase()))
-          );
+           const lowercaseQuery = query.toLowerCase();
+           filtered = data.filter(a => {
+             const titleMatch = a.title?.toLowerCase().includes(lowercaseQuery);
+             const categoryMatch = a.category?.toLowerCase().includes(lowercaseQuery);
+             const contentMatch = a.content?.toLowerCase().includes(lowercaseQuery);
+             const excerptMatch = a.excerpt?.toLowerCase().includes(lowercaseQuery);
+             const tagsMatch = a.tags?.toLowerCase().includes(lowercaseQuery);
+             
+             // highlights might be stored as JSON or string
+             let highlightsMatch = false;
+             if (a.highlights) {
+               try {
+                 const parsed = typeof a.highlights === 'string' ? JSON.parse(a.highlights) : a.highlights;
+                 if (Array.isArray(parsed)) {
+                   highlightsMatch = parsed.some(h => typeof h === 'string' && h.toLowerCase().includes(lowercaseQuery));
+                 } else {
+                   highlightsMatch = String(a.highlights).toLowerCase().includes(lowercaseQuery);
+                 }
+               } catch (e) {
+                 highlightsMatch = String(a.highlights).toLowerCase().includes(lowercaseQuery);
+               }
+             }
+             
+             return titleMatch || categoryMatch || contentMatch || excerptMatch || tagsMatch || highlightsMatch;
+           });
         }
         
         setResults(filtered);
@@ -65,6 +88,7 @@ const SearchPage = () => {
   }, [query, dateQuery]);
 
   const displayTitle = query ? `Showing results for: "${query}"` : dateQuery ? `News for: ${new Date(dateQuery).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'Search Results';
+
 
   return (
     <Container fluid className="px-md-4 px-xl-5 py-4 reveal">
@@ -102,11 +126,11 @@ const SearchPage = () => {
                     </div>
                     <Badge bg="danger" className="mb-2 text-uppercase">{article.category}</Badge>
                     <h5 className="fw-bold lh-sm" style={{ fontSize: '1.1rem' }}>
-                      <Link to={`/article/search/${article.title}/${article.id}`} className="text-dark hover-text-red text-decoration-none">
+                      <Link to={`/article/${createSlug(article.category)}/${createSlug(article.title)}`} className="text-dark hover-text-red text-decoration-none">
                         {article.title}
                       </Link>
                     </h5>
-                    <p className="small text-muted mb-0">{article.date} • By Admin</p>
+                    <p className="small text-muted mb-0">{getRelativeTime(article.date || article.createdAt)} • By Admin</p>
                   </div>
                 </Col>
               ))}

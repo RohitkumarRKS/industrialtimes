@@ -20,7 +20,9 @@ const CorporateLogin = () => {
   const [generatedCode, setGeneratedCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [forgotError, setForgotError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleSendCode = (e) => {
@@ -123,13 +125,24 @@ const CorporateLogin = () => {
     setLoading(true);
     setError('');
     setSuccess('');
+
+    // Proactively clear existing user session credentials to prevent stale authentication state
+    localStorage.removeItem('userInfo');
+
     try {
       const { data } = await axios.post(`${API_BASE}/api/auth/login`, {
         email: loginEmail,
         password: loginPassword
       });
 
-      sessionStorage.setItem('userInfo', JSON.stringify(data));
+      // Block SuperAdmins from corporate dashboard
+      if (data.role === 'superadmin') {
+        setError('❌ Access Denied: SuperAdmins cannot login to the corporate portal.');
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem('userInfo', JSON.stringify(data));
       if (rememberMe) {
         localStorage.setItem('rememberedCorporateEmail', loginEmail);
       } else {
@@ -139,7 +152,7 @@ const CorporateLogin = () => {
       setTimeout(() => {
         // If they already have an active subscription, go to profile/dashboard
         if (data.membershipPlan) {
-          navigate('/profile');
+          navigate('/user-dashboard');
         } else {
           // If they haven't paid yet, go to the corporate payment screen!
           navigate(`/corporate/payment?plan=${data.selectedPlan || selectedPlan || 'basic'}`);
@@ -205,10 +218,11 @@ const CorporateLogin = () => {
         </div>
       )}
 
+      <Link to="/" className="auth-visit-site-btn">
+        <i className="bi bi-arrow-left"></i> Visit Website
+      </Link>
+
       <div className={`auth-split-wrapper ${transitioning ? 'auth-transition-out' : ''}`}>
-        <Link to="/" className="auth-visit-site-btn">
-          <i className="bi bi-arrow-left"></i> Visit Website
-        </Link>
         {/* Left Branding Panel */}
         <div className="auth-split-left">
           <div className="auth-left-shapes">
@@ -270,7 +284,7 @@ const CorporateLogin = () => {
             )}
           </div>
           <div className="auth-brand-footer">
-            © {new Date().getFullYear()} Industrial Times Networks. All rights reserved.
+            © {new Date().getFullYear()} Industrial Times. All rights reserved.
           </div>
         </div>
 
@@ -342,7 +356,7 @@ const CorporateLogin = () => {
                       name="phone"
                       placeholder="Phone"
                       value={signupData.phone}
-                      onChange={(e) => setSignupData({ ...signupData, phone: e.target.value })}
+                      onChange={(e) => setSignupData({ ...signupData, phone: e.target.value.replace(/\D/g, '') })}
                       className="auth-input auth-input-with-icon"
                     />
                   </div>
@@ -365,15 +379,23 @@ const CorporateLogin = () => {
                 <div className="auth-input-group auth-hover-input">
                   <i className="bi bi-lock auth-input-icon"></i>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     name="password"
                     autoComplete="new-password"
                     placeholder="Create Password"
                     value={signupData.password}
                     onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
                     required
-                    className="auth-input auth-input-with-icon"
+                    className="auth-input auth-input-with-icon auth-input-with-eye"
                   />
+                  <button
+                    type="button"
+                    className="auth-password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                  </button>
                 </div>
 
                 <button type="submit" className="auth-submit-btn auth-submit-btn-red auth-hover-btn" disabled={loading || transitioning}>
@@ -403,15 +425,23 @@ const CorporateLogin = () => {
                 <div className="auth-input-group auth-hover-input">
                   <i className="bi bi-lock auth-input-icon"></i>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     name="password"
                     autoComplete="current-password"
                     placeholder="Password"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
-                    className="auth-input auth-input-with-icon"
+                    className="auth-input auth-input-with-icon auth-input-with-eye"
                   />
+                  <button
+                    type="button"
+                    className="auth-password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                  </button>
                 </div>
 
                 <div className="auth-form-options">
@@ -630,10 +660,10 @@ const CorporateLogin = () => {
                 <p style={{ fontSize: '1rem', color: '#cbd5e1', lineHeight: '1.6', marginBottom: '2rem' }}>
                   Create a new password to secure your account.
                 </p>
-                <div className="auth-input-group auth-hover-input" style={{ marginBottom: '1rem' }}>
+                <div className="auth-input-group auth-hover-input" style={{ marginBottom: '1rem', position: 'relative' }}>
                   <i className="bi bi-lock auth-input-icon"></i>
                   <input
-                    type="password"
+                    type={showNewPassword ? "text" : "password"}
                     placeholder="New Password (min 6 characters)"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -643,16 +673,24 @@ const CorporateLogin = () => {
                       background: 'rgba(255, 255, 255, 0.05)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       borderRadius: '12px',
-                      padding: '12px 16px 12px 45px',
+                      padding: '12px 45px 12px 45px',
                       color: '#fff',
                       fontSize: '1rem'
                     }}
                   />
+                  <button
+                    type="button"
+                    className="auth-password-toggle"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    aria-label={showNewPassword ? "Hide password" : "Show password"}
+                  >
+                    <i className={`bi ${showNewPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                  </button>
                 </div>
-                <div className="auth-input-group auth-hover-input" style={{ marginBottom: '2rem' }}>
+                <div className="auth-input-group auth-hover-input" style={{ marginBottom: '2rem', position: 'relative' }}>
                   <i className="bi bi-lock-fill auth-input-icon"></i>
                   <input
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm New Password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -662,11 +700,19 @@ const CorporateLogin = () => {
                       background: 'rgba(255, 255, 255, 0.05)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       borderRadius: '12px',
-                      padding: '12px 16px 12px 45px',
+                      padding: '12px 45px 12px 45px',
                       color: '#fff',
                       fontSize: '1rem'
                     }}
                   />
+                  <button
+                    type="button"
+                    className="auth-password-toggle"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    <i className={`bi ${showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                  </button>
                 </div>
                 <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
                   <button

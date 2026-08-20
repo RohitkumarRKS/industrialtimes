@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import API_BASE from '../../config/api';
 
-const ManageNews = () => {
+const ManageNews = ({ adminInfo: propAdminInfo }) => {
   const location = useLocation();
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +20,19 @@ const ManageNews = () => {
   const [success, setSuccess] = useState('');
   const [mediaUploading, setMediaUploading] = useState(false);
 
+  const [isListening, setIsListening] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const recognitionRef = React.useRef(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+
   // Pagination Boxes Configuration
   const [selectedBox, setSelectedBox] = useState(1);
   const [extraBoxesCount, setExtraBoxesCount] = useState(0);
@@ -30,10 +43,9 @@ const ManageNews = () => {
   }, [activeCategory]);
 
   const categories = [
-    "News", "Articles", "Trending", "OEM", "Automation", 
-    "Interviews", "Startups", "Business", "Events", "Videos",
-    "Entertainment", "Sports", "Education", "Manufacturing",
-    "Acquisitions", "Media Kit", "Magazine"
+    "Global", "News", "Regional", "Articles", "Trending", "OEM", "Automation", 
+    "Interview", "Startup", "Business", "Event", "Tender",
+    "Entertainment", "Sports", "Education", "Astrology"
   ];
   const indianStates = [
     "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", 
@@ -42,7 +54,25 @@ const ManageNews = () => {
     "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi", "Jammu and Kashmir"
   ];
 
-  const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo'));
+  const getAdminInfo = () => {
+    if (propAdminInfo) return propAdminInfo;
+    try {
+      const mode = sessionStorage.getItem('portalMode');
+      const saved = mode === 'user'
+        ? localStorage.getItem('userInfo')
+        : (localStorage.getItem('adminInfo') || localStorage.getItem('userInfo'));
+      if (saved && saved !== 'undefined') {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.role === 'superadmin' || parsed.isManager)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return null;
+  };
+  const adminInfo = getAdminInfo();
   const config = {
     headers: {
       Authorization: `Bearer ${adminInfo?.token}`
@@ -66,7 +96,7 @@ const ManageNews = () => {
   const fetchArticles = async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get(`${API_BASE}/api/articles`);
+      const { data } = await axios.get(`${API_BASE}/api/articles?includeContent=true`);
       setArticles(data);
     } catch (err) {
       setError('Failed to fetch articles');
@@ -100,6 +130,85 @@ const ManageNews = () => {
     setShowModal(false);
     setError('');
     setSuccess('');
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsListening(false);
+  };
+
+  const handleVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Your browser does not support Speech Recognition. Please try Chrome, Edge, or Safari.");
+      return;
+    }
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+    } else {
+      const rec = new SpeechRecognition();
+      rec.continuous = true;
+      rec.interimResults = false;
+      rec.lang = 'en-US';
+
+      rec.onstart = () => {
+        setIsListening(true);
+      };
+
+      rec.onresult = (event) => {
+        const currentText = event.results[event.results.length - 1][0].transcript;
+        setCurrentArticle(prev => ({
+          ...prev,
+          content: prev.content ? prev.content + " " + currentText : currentText
+        }));
+      };
+
+      rec.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        if (event.error === 'not-allowed') {
+          alert("Microphone access was denied. Please allow microphone permissions.");
+        }
+        setIsListening(false);
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = rec;
+      rec.start();
+    }
+  };
+
+  const handleEnhanceContent = async () => {
+    if (!currentArticle.content.trim()) {
+      alert("Please write some content first to enhance it with AI.");
+      return;
+    }
+    setIsEnhancing(true);
+    setError('');
+    setSuccess('');
+    try {
+      const { data } = await axios.post(
+        `${API_BASE}/api/articles/enhance`,
+        { content: currentArticle.content },
+        { headers: { Authorization: `Bearer ${adminInfo?.token}` } }
+      );
+      if (data && data.enhancedText) {
+        setCurrentArticle(prev => ({
+          ...prev,
+          content: data.enhancedText
+        }));
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || 'AI Enhancement failed. Please try again.');
+    } finally {
+      setIsEnhancing(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -377,7 +486,62 @@ const ManageNews = () => {
                       />
                     </div>
                     <div className="publish-field">
-                      <label>Content Body</label>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                        <label style={{ margin: 0 }}>Content Body</label>
+                        <div className="ai-toolbar" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={handleVoiceInput}
+                            className={`ai-toolbar-btn voice-btn ${isListening ? 'listening' : ''}`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '6px 12px',
+                              borderRadius: '20px',
+                              border: '1px solid #e2e8f0',
+                              background: isListening ? '#fef2f2' : '#ffffff',
+                              color: isListening ? '#ef4444' : '#64748b',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.3s ease',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                              outline: 'none'
+                            }}
+                            title={isListening ? "Listening... Click to stop" : "Start Voice Dictation"}
+                          >
+                            <i className={`bi ${isListening ? 'bi-mic-fill' : 'bi-mic'} ${isListening ? 'pulse-anim' : ''}`} style={{ color: isListening ? '#ef4444' : 'inherit' }}></i>
+                            {isListening ? 'Listening...' : 'Voice Dictate'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleEnhanceContent}
+                            disabled={isEnhancing}
+                            className={`ai-toolbar-btn enhance-btn ${isEnhancing ? 'enhancing' : ''}`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '6px 12px',
+                              borderRadius: '20px',
+                              border: '1px solid #e9d5ff',
+                              background: isEnhancing ? '#f3e8ff' : 'linear-gradient(135deg, #f5f3ff 0%, #edd8fc 100%)',
+                              color: '#7c3aed',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.3s ease',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                              outline: 'none'
+                            }}
+                            title="Improve writing structure & grammar using AI"
+                          >
+                            <i className={`bi ${isEnhancing ? 'bi-arrow-repeat' : 'bi-magic'} ${isEnhancing ? 'spin-anim' : ''}`}></i>
+                            {isEnhancing ? 'Enhancing...' : 'AI Enhance'}
+                          </button>
+                        </div>
+                      </div>
                       <textarea
                         rows={10}
                         placeholder="Tell the story..."
@@ -385,6 +549,10 @@ const ManageNews = () => {
                         onChange={(e) => setCurrentArticle({ ...currentArticle, content: e.target.value })}
                         required
                       ></textarea>
+                      <div className="x-small text-muted mt-1" style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        <i className="bi bi-info-circle me-1 text-primary"></i>
+                        Any website link (e.g. Website: https://..., Instagram: https://...) included in the body will automatically become clickable on the live website.
+                      </div>
                     </div>
                     <div className="publish-field">
                       <label>Key Highlights</label>
@@ -412,6 +580,10 @@ const ManageNews = () => {
                       }}>
                         <i className="bi bi-plus"></i> Add Highlight
                       </button>
+                      <div className="x-small text-muted mt-1" style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        <i className="bi bi-info-circle me-1 text-primary"></i>
+                        Any URLs in key highlights will automatically be converted to clickable links.
+                      </div>
                     </div>
                   </div>
 
@@ -482,7 +654,7 @@ const ManageNews = () => {
                         <div className="publish-or-divider">— OR —</div>
                         <input
                           type="url"
-                          placeholder="YouTube/Vimeo URL"
+                          placeholder="Media/Social Embed URL (YouTube, FB, etc.)"
                           value={currentArticle.videoUrl || ''}
                           onChange={(e) => setCurrentArticle({ ...currentArticle, videoUrl: e.target.value })}
                         />

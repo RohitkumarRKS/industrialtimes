@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import API_BASE from '../../config/api';
-import PaymentGatewayModal from '../../components/PaymentGatewayModal';
 
 const CorporatePayment = () => {
   const [searchParams] = useSearchParams();
@@ -11,22 +10,75 @@ const CorporatePayment = () => {
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState(null);
-  const [showPayment, setShowPayment] = useState(false);
+  const [upiId, setUpiId] = useState('');
   const navigate = useNavigate();
+
+  // Promo code states
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [validatingPromo, setValidatingPromo] = useState(false);
+  const [promoDiscountAmount, setPromoDiscountAmount] = useState(0);
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoError, setPromoError] = useState('');
+
+  const handleApplyPromo = async () => {
+    if (!promoCodeInput.trim()) return;
+    setValidatingPromo(true);
+    setPromoError('');
+    try {
+      const res = await axios.post(`${API_BASE}/api/promo-codes/validate`, {
+        code: promoCodeInput.trim().toUpperCase(),
+        platform: 'membership',
+        originalAmount: getPrice()
+      });
+      if (res.data.valid) {
+        setAppliedPromo(res.data);
+        setPromoDiscountAmount(res.data.discountAmount);
+        setPromoError('');
+      } else {
+        setPromoError(res.data.error || 'Invalid promo code');
+        setAppliedPromo(null);
+        setPromoDiscountAmount(0);
+      }
+    } catch (err) {
+      setPromoError(err.response?.data?.error || 'Invalid promo code');
+      setAppliedPromo(null);
+      setPromoDiscountAmount(0);
+    } finally {
+      setValidatingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoDiscountAmount(0);
+    setPromoCodeInput('');
+    setPromoError('');
+  };
+
+  // Reset coupon if billing cycle changes
+  useEffect(() => {
+    handleRemovePromo();
+  }, [billingCycle]);
 
   useEffect(() => {
     // Force authentication check
-    const saved = sessionStorage.getItem('userInfo');
+    const saved = localStorage.getItem('userInfo');
     if (!saved) {
       navigate(`/corporate/login?plan=${planKey}`);
       return;
     }
-    const user = JSON.parse(saved);
-    if (user.role !== 'corporate') {
-      navigate('/profile');
-      return;
+    try {
+      const user = JSON.parse(saved);
+      if (user.role !== 'corporate') {
+        navigate('/profile');
+        return;
+      }
+      setUserInfo(user);
+    } catch (e) {
+      console.error(e);
+      localStorage.removeItem('userInfo');
+      navigate(`/corporate/login?plan=${planKey}`);
     }
-    setUserInfo(user);
   }, [navigate, planKey]);
 
   useEffect(() => {
@@ -68,45 +120,87 @@ const CorporatePayment = () => {
   const getCycleLabel = () => {
     if (billingCycle === 'monthly') return 'Monthly Billing';
     if (billingCycle === 'quarterly') return 'Quarterly Billing (5% Off)';
-    return 'Annual Billing (8% Off)';
+    return 'Annual Billing (10% Off)';
   };
 
-  const onPaymentSuccess = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/membership/verify-payment`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${userInfo.token}`
-        },
-        body: JSON.stringify({
-          userId: userInfo.id,
-          planId: plan.planKey,
-          billingCycle: billingCycle,
-          razorpay_payment_id: 'corp_pay_' + Date.now(),
-          mock: true
-        })
-      });
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
-      if (res.ok) {
-        // Update local session info
-        const updatedUser = { 
-          ...userInfo, 
-          membershipPlan: plan.planKey,
-          selectedPlan: plan.planKey
-        };
-        sessionStorage.setItem('userInfo', JSON.stringify(updatedUser));
-        setShowPayment(false);
-        
-        // Show high-end success notification and redirect
-        alert(`🎉 Subscription Activated! Welcome to Industrial Times Corporate Portal as a ${plan.name} Partner.`);
-        navigate('/profile');
-      } else {
-        alert('Failed to record subscription. Please contact support.');
+  const handlePaymentInitiation = async () => {
+    try {
+      const res = await loadRazorpayScript();
+      if (!res) {
+        alert('Razorpay SDK failed to load. Are you online?');
+        return;
       }
+
+      // Create Order
+      const { data: order } = await axios.post(`${API_BASE}/api/membership/create-order`, {
+        amount: getPrice(),
+        planId: plan.planKey,
+        billingCycle,
+        promoCode: appliedPromo?.code || ''
+      }, {
+        headers: { Authorization: `Bearer ${userInfo.token}` }
+      });
+ 
+      const options = {
+        key: 'rzp_live_SwnZMgoy1Uy9zu', // Production ready test key
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Industrial Times',
+        description: `${plan.name} Corporate Plan`,
+        order_id: order.id,
+        handler: async function (response) {
+          try {
+            const verifyRes = await axios.post(`${API_BASE}/api/membership/verify-payment`, {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              userId: userInfo.id,
+              planId: plan.planKey,
+              billingCycle,
+              promoCode: appliedPromo?.code || ''
+            }, {
+              headers: { Authorization: `Bearer ${userInfo.token}` }
+            });
+
+            if (verifyRes.data.message) {
+              localStorage.removeItem('userInfo');
+              alert(`🎉 Subscription Activated! Welcome to Industrial Times Corporate Portal as a ${plan.name} Partner. Please log in to access your dashboard.`);
+              navigate('/corporate/login');
+            }
+          } catch (e) {
+            alert('Payment verification failed. Please contact support.');
+          }
+        },
+        prefill: {
+          name: userInfo.companyName || userInfo.name,
+          email: userInfo.email,
+          ...(upiId && {
+            contact: userInfo.phone || '9999999999',
+            method: 'upi',
+            vpa: upiId
+          })
+        },
+        theme: {
+          color: plan.color || '#DA251D'
+        }
+      };
+
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.open();
+
     } catch (e) {
       console.error(e);
-      alert('Network error verifying payment.');
+      alert('Network error initializing payment gateway.');
     }
   };
 
@@ -171,7 +265,7 @@ const CorporatePayment = () => {
                 className={`cycle-card ${billingCycle === 'yearly' ? 'active' : ''}`}
                 onClick={() => setBillingCycle('yearly')}
               >
-                <span className="save-badge bg-success">Save 8%</span>
+                <span className="save-badge bg-success">Save 10%</span>
                 <div className="cycle-header">
                   <span className="cycle-title">Yearly</span>
                   {billingCycle === 'yearly' && <i className="bi bi-check-circle-fill"></i>}
@@ -216,6 +310,48 @@ const CorporatePayment = () => {
               <span className="bill-label">Billing Cycle</span>
               <span className="bill-value badge bg-danger py-1 px-2 text-uppercase">{getCycleLabel()}</span>
             </div>
+
+            {/* Promo Code Input Block */}
+            <div className="my-3 p-2 bg-dark bg-opacity-25 rounded-3 border border-secondary border-opacity-25">
+              {appliedPromo ? (
+                <div className="d-flex align-items-center justify-content-between text-success small p-1">
+                  <div>
+                    <i className="bi bi-tag-fill me-2"></i>
+                    <strong>{appliedPromo.code}</strong> applied
+                  </div>
+                  <button type="button" className="btn btn-link btn-sm text-danger p-0 ms-2 text-decoration-none fw-bold" onClick={() => { setAppliedPromo(null); setPromoDiscountAmount(0); }}>Remove</button>
+                </div>
+              ) : (
+                <div>
+                  <div className="input-group input-group-sm">
+                    <input 
+                      type="text" 
+                      className="form-control bg-dark border-secondary text-white" 
+                      placeholder="Have a promo code?" 
+                      value={promoCodeInput}
+                      onChange={(e) => setPromoCodeInput(e.target.value)}
+                      disabled={validatingPromo}
+                    />
+                    <button 
+                      className="btn btn-danger btn-sm fw-bold px-3" 
+                      type="button" 
+                      onClick={handleApplyPromo}
+                      disabled={validatingPromo || !promoCodeInput.trim()}
+                    >
+                      {validatingPromo ? <span className="spinner-border spinner-border-sm"></span> : 'Apply'}
+                    </button>
+                  </div>
+                  {promoError && <div className="text-danger small mt-1 fw-medium" style={{ fontSize: '0.75rem' }}><i className="bi bi-exclamation-circle me-1"></i>{promoError}</div>}
+                </div>
+              )}
+            </div>
+
+            {promoDiscountAmount > 0 && (
+              <div className="bill-row text-success small">
+                <span>Promo Discount</span>
+                <span>- ₹{promoDiscountAmount.toLocaleString()}</span>
+              </div>
+            )}
             
             <div className="bill-divider"></div>
 
@@ -229,9 +365,30 @@ const CorporatePayment = () => {
             <div className="bill-row total-row">
               <span className="total-label">Total Payable Amount</span>
               <span className="total-price-amount" style={{ color: plan.color }}>
-                ₹{getPrice().toLocaleString()}
+                {promoDiscountAmount > 0 ? (
+                  <>
+                    <span className="text-muted text-decoration-line-through me-2" style={{ fontSize: '0.9rem' }}>₹{getPrice().toLocaleString()}</span>
+                    <span>₹{Math.max(0, getPrice() - promoDiscountAmount).toLocaleString()}</span>
+                  </>
+                ) : `₹${getPrice().toLocaleString()}`}
               </span>
             </div>
+          </div>
+
+          {/* Direct UPI Input Option */}
+          <div className="mb-4">
+            <label className="bill-label d-block mb-2">
+              <i className="bi bi-phone me-2"></i>Direct UPI Payment (Optional)
+            </label>
+            <input 
+              type="text" 
+              className="form-control" 
+              placeholder="e.g. yourname@upi" 
+              value={upiId}
+              onChange={(e) => setUpiId(e.target.value)}
+              style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
+            />
+            <small className="text-muted" style={{ fontSize: '0.75rem' }}>Enter your UPI ID to skip the payment method selection screen.</small>
           </div>
 
           {/* Payment execution buttons */}
@@ -239,7 +396,7 @@ const CorporatePayment = () => {
             <button 
               className="pay-now-btn shadow-lg"
               style={{ background: plan.color }}
-              onClick={() => setShowPayment(true)}
+              onClick={handlePaymentInitiation}
             >
               <i className="bi bi-shield-lock-fill me-2"></i>
               Proceed to Payment
@@ -248,7 +405,7 @@ const CorporatePayment = () => {
             <button 
               className="cancel-billing-btn"
               onClick={() => {
-                sessionStorage.removeItem('userInfo');
+                localStorage.removeItem('userInfo');
                 navigate('/');
               }}
             >
@@ -264,17 +421,6 @@ const CorporatePayment = () => {
         </div>
       </div>
 
-      {/* Razorpay Mock Trigger */}
-      {showPayment && (
-        <PaymentGatewayModal 
-          show={showPayment}
-          onHide={() => setShowPayment(false)}
-          amount={getPrice()}
-          planName={plan.name}
-          billingCycle={billingCycle}
-          onPaymentSuccess={onPaymentSuccess}
-        />
-      )}
 
       <style dangerouslySetInnerHTML={{ __html: `
         .corporate-payment-page {

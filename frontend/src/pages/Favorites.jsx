@@ -5,6 +5,8 @@ import { Helmet } from 'react-helmet-async';
 import Advertisement from '../components/Advertisement';
 import MobileStickyAd from '../components/MobileStickyAd';
 import API_BASE from '../config/api';
+import { createSlug } from '../utils/slugify';
+import { getRelativeTime } from '../utils/timeFormatter';
 
 const Favorites = () => {
   const [favorites, setFavorites] = useState([]);
@@ -20,12 +22,6 @@ const Favorites = () => {
     setFavorites(updated);
   };
 
-  const createSlug = (text) => {
-    return text
-      .toLowerCase()
-      .replace(/ /g, '-')
-      .replace(/[^\w-]+/g, '');
-  };
 
   const getImageUrl = (img) => {
     if (!img) return null;
@@ -62,7 +58,7 @@ const Favorites = () => {
             <Row className="g-4">
               {favorites.map(article => {
                 const articleImg = getImageUrl(article.image || article.imageUrl);
-                const articleLink = `/article/${createSlug(article.category || 'news')}/${createSlug(article.title)}/${article.id}`;
+                const articleLink = `/article/${createSlug(article.category || 'news')}/${createSlug(article.title)}`;
                 
                 return (
                   <Col md={6} key={article.id}>
@@ -92,7 +88,7 @@ const Favorites = () => {
                           {article.title}
                         </Link>
                       </h5>
-                      <p className="small text-muted mb-0">{article.date || 'Saved Recently'}</p>
+                      <p className="small text-muted mb-0">{getRelativeTime(article.date || article.createdAt)}</p>
                     </div>
                   </Col>
                 );

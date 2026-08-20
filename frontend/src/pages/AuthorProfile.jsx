@@ -4,7 +4,17 @@ import { Container, Row, Col, Badge, Spinner } from 'react-bootstrap';
 import Advertisement from '../components/Advertisement';
 import MobileStickyAd from '../components/MobileStickyAd';
 import API_BASE from '../config/api';
+import { createSlug } from '../utils/slugify';
+import { getRelativeTime } from '../utils/timeFormatter';
 import axios from 'axios';
+
+const getReporterLevel = (followersCount = 0, thresholds = { silver: 10, gold: 50, diamond: 100 }) => {
+  const count = parseInt(followersCount) || 0;
+  if (count >= (thresholds.diamond || 100)) return { level: 'Diamond', color: '#38bdf8', icon: 'bi-gem', bg: '#e0f2fe', text: '#0369a1' };
+  if (count >= (thresholds.gold || 50)) return { level: 'Gold', color: '#fbbf24', icon: 'bi-trophy-fill', bg: '#fef3c7', text: '#b45309' };
+  if (count >= (thresholds.silver || 10)) return { level: 'Silver', color: '#94a3b8', icon: 'bi-award-fill', bg: '#f1f5f9', text: '#475569' };
+  return { level: 'Bronze', color: '#cd7f32', icon: 'bi-award', bg: '#ffedd5', text: '#c2410c' };
+};
 
 const AuthorProfile = () => {
   const { id } = useParams();
@@ -12,6 +22,21 @@ const AuthorProfile = () => {
   const [author, setAuthor] = useState(null);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reporterThresholds, setReporterThresholds] = useState({ silver: 10, gold: 50, diamond: 100 });
+
+  useEffect(() => {
+    const fetchThresholds = async () => {
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/platform-settings/public`);
+        if (data.reporterLevels) {
+          setReporterThresholds(data.reporterLevels);
+        }
+      } catch (err) {
+        console.error("Failed to fetch public level settings", err);
+      }
+    };
+    fetchThresholds();
+  }, []);
 
   // Follow & Rating States
   const [userInfo, setUserInfo] = useState(null);
@@ -21,14 +46,19 @@ const AuthorProfile = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
     // If logged-in user visits their own author profile, redirect to dashboard
-    const saved = sessionStorage.getItem('userInfo');
+    const saved = localStorage.getItem('userInfo');
     let currentUser = null;
     if (saved) {
-      currentUser = JSON.parse(saved);
-      setUserInfo(currentUser);
-      if ((currentUser.id.toString() === id || currentUser.name.toLowerCase() === decodeURIComponent(id).toLowerCase()) && (currentUser.role === 'author' || currentUser.role === 'corporate')) {
-        navigate('/user-dashboard', { replace: true });
-        return;
+      try {
+        currentUser = JSON.parse(saved);
+        setUserInfo(currentUser);
+        if ((currentUser.id.toString() === id || currentUser.name.toLowerCase() === decodeURIComponent(id).toLowerCase()) && (currentUser.role === 'author' || currentUser.role === 'corporate')) {
+          navigate('/user-dashboard', { replace: true });
+          return;
+        }
+      } catch (e) {
+        console.error(e);
+        localStorage.removeItem('userInfo');
       }
     }
 
@@ -41,8 +71,7 @@ const AuthorProfile = () => {
         setAuthor(authorData);
 
         // 2. Fetch author's articles
-        const isNumeric = !isNaN(id);
-        const queryParam = isNumeric ? `authorId=${id}` : `authorName=${encodeURIComponent(id)}`;
+        const queryParam = authorData.id ? `authorId=${authorData.id}` : `authorName=${encodeURIComponent(authorData.name)}`;
         const articlesRes = await axios.get(`${API_BASE}/api/articles?${queryParam}`);
         setArticles(articlesRes.data);
 
@@ -171,9 +200,6 @@ const AuthorProfile = () => {
     );
   }
 
-  const createSlug = (text) => {
-    return text ? text.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') : 'news';
-  };
 
   const getImageUrl = (img) => {
     if (!img) return null;
@@ -198,25 +224,48 @@ const AuthorProfile = () => {
              
              <Row className="align-items-start position-relative z-index-1 mt-2">
                 <Col md="auto" className="mb-4 mb-md-0 d-flex flex-column align-items-center">
-                   <div className="bg-white rounded-circle shadow-sm p-1 mb-3" style={{ width: '120px', height: '120px' }}>
-                     <div className="bg-danger rounded-circle w-100 h-100 d-flex align-items-center justify-content-center text-white shadow-inner">
-                        <span className="display-5 fw-black">{author.name ? author.name.charAt(0).toUpperCase() : 'E'}</span>
-                     </div>
-                   </div>
-                   <Badge bg="danger" className="text-uppercase fw-black px-3 py-2 shadow-sm" style={{ letterSpacing: '1px', fontSize: '0.7rem' }}>
-                     {author.role === 'corporate' ? 'Corporate Partner' : author.role === 'author' ? 'Verified Reporter' : 'Editorial Member'}
-                   </Badge>
+                    <div className="bg-white rounded-circle shadow-sm p-1 mb-3" style={{ width: '120px', height: '120px', overflow: 'hidden' }}>
+                      {author.profilePic ? (
+                        <img 
+                          src={author.profilePic.startsWith('http') ? author.profilePic : (author.profilePic === '/icon.png' ? '/icon.png' : `${API_BASE}${author.profilePic.startsWith('/') ? '' : '/'}${author.profilePic}`)}
+                          alt={author.name}
+                          className="rounded-circle w-100 h-100"
+                          style={{ objectFit: author.profilePic === '/icon.png' ? 'contain' : 'cover', padding: author.profilePic === '/icon.png' ? '12px' : '0px' }}
+                        />
+                      ) : (
+                        <div className="bg-danger rounded-circle w-100 h-100 d-flex align-items-center justify-content-center text-white shadow-inner">
+                           <span className="display-5 fw-black">{author.name ? author.name.charAt(0).toUpperCase() : 'E'}</span>
+                        </div>
+                      )}
+                    </div>
+                    {(() => {
+                      if (author.role === 'corporate') {
+                        return <Badge bg="purple" className="text-uppercase fw-black px-3 py-2 shadow-sm" style={{ letterSpacing: '1px', fontSize: '0.7rem', background: '#8b5cf6' }}>Corporate Partner</Badge>;
+                      }
+                      if (author.role === 'superadmin') {
+                        return <Badge bg="danger" className="text-uppercase fw-black px-3 py-2 shadow-sm" style={{ letterSpacing: '1px', fontSize: '0.7rem' }}>Editorial Team</Badge>;
+                      }
+                      const lvl = getReporterLevel(author.followersCount, reporterThresholds);
+                      return (
+                        <Badge 
+                          className="text-uppercase fw-black px-3 py-2 shadow-sm d-flex align-items-center gap-1" 
+                          style={{ letterSpacing: '1px', fontSize: '0.7rem', backgroundColor: lvl.color, color: '#fff', border: `1px solid rgba(255,255,255,0.2)` }}
+                        >
+                          <i className={`bi ${lvl.icon}`}></i> {lvl.level} Reporter
+                        </Badge>
+                      );
+                    })()}
                 </Col>
                 <Col className="ps-md-4 pt-md-3 text-center text-md-start">
                    <h1 className="display-6 fw-black text-dark mb-2">{author.name || 'Editorial Member'}</h1>
                    <p className="text-secondary mb-4" style={{ fontSize: '1.05rem', lineHeight: '1.6' }}>
-                     {author.bio || 'Expert Industrial Analyst & Content Strategist at Industrial Times Network.'}
+                     {author.bio || 'Expert Industrial Analyst & Content Strategist at Industrial Times.'}
                    </p>
                    
                    <div className="d-flex flex-wrap gap-3 gap-md-4 small fw-bold bg-light p-3 rounded-4 border justify-content-center justify-content-md-start mb-4">
                       <div className="d-flex flex-column gap-1 text-start">
                         <span className="text-muted x-small text-uppercase fw-bold" style={{ letterSpacing: '0.5px' }}>Contact</span>
-                        <span className="text-dark"><i className="bi bi-envelope-fill text-danger me-2"></i>{author.email || 'contact@industrial-times.com'}</span>
+                        <span className="text-dark"><i className="bi bi-envelope-fill text-danger me-2"></i>{author.email || 'contact@industrialtimes.in'}</span>
                       </div>
                       <div className="d-flex flex-column gap-1 border-start ps-3 ps-md-4 text-start">
                         <span className="text-muted x-small text-uppercase fw-bold" style={{ letterSpacing: '0.5px' }}>Expertise</span>
@@ -275,7 +324,7 @@ const AuthorProfile = () => {
                 const articleImg = getImageUrl(article.image || article.imageUrl);
                 return (
                 <div key={article.id}>
-                   <Link to={`/article/${createSlug(article.category)}/${createSlug(article.title)}/${article.id}`} className="text-decoration-none group">
+                   <Link to={`/article/${createSlug(article.category)}/${createSlug(article.title)}`} className="text-decoration-none group">
                       <div className="bg-white rounded-4 shadow-sm border border-light overflow-hidden hover-lift transition-all d-flex flex-column flex-md-row h-100">
                          {/* Mobile Image */}
                          <div className="d-md-none position-relative" style={{ height: '220px' }}>
@@ -303,7 +352,7 @@ const AuthorProfile = () => {
                                <Badge bg="danger" className="x-small fw-black text-uppercase me-3 px-2 py-1 shadow-sm" style={{ fontSize: '0.65rem' }}>{article.category || 'News'}</Badge>
                                <span className="text-muted x-small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
                                  <i className="bi bi-calendar-event me-1"></i>
-                                 {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today'}
+                                 {getRelativeTime(article.createdAt || 'Today')}
                                </span>
                             </div>
                             <h6 className="fw-bold text-dark mb-2 lh-sm" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: '1.1rem' }}>

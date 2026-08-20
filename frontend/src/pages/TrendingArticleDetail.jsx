@@ -3,6 +3,7 @@ import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Badge } from 'react-bootstrap';
 import Advertisement from '../components/Advertisement';
 import MobileStickyAd from '../components/MobileStickyAd';
+import { formatClickableHtml } from '../utils/linkify';
 
 const TrendingArticleDetail = () => {
   const location = useLocation();
@@ -23,9 +24,10 @@ const TrendingArticleDetail = () => {
     ? new Date(article.pubDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
     : 'Recently Updated';
 
-  // Sanitize the HTML content from Google News RSS description
+  // Sanitize the HTML content from Google News RSS description and format links
   const createMarkup = () => {
-    return { __html: article.description || article.content || '<p>No additional details available for this story.</p>' };
+    const rawContent = article.description || article.content || '<p>No additional details available for this story.</p>';
+    return formatClickableHtml(rawContent);
   };
 
   return (
@@ -97,9 +99,9 @@ const TrendingArticleDetail = () => {
 
             <div className="mt-5 pt-4 border-top d-flex flex-wrap gap-2">
               <span className="fw-bold me-2">TAGS:</span>
-              <Link to="/category/Trending" className="badge bg-light text-dark border px-3 text-decoration-none tag-hover">#Trending</Link>
+              <Link to="/trending" className="badge bg-light text-dark border px-3 text-decoration-none tag-hover">#Trending</Link>
               <Link to={`/category/${article.sourceName?.replace(/\s+/g, '')}`} className="badge bg-light text-dark border px-3 text-decoration-none tag-hover">#{article.sourceName?.replace(/\s+/g, '')}</Link>
-              <Link to="/category/LiveUpdates" className="badge bg-light text-dark border px-3 text-decoration-none tag-hover">#LiveUpdates</Link>
+              <Link to="/news" className="badge bg-light text-dark border px-3 text-decoration-none tag-hover">#LiveUpdates</Link>
             </div>
             
             <div className="mt-5 bg-dark text-white p-4 rounded-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 shadow">

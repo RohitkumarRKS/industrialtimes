@@ -9,14 +9,29 @@ const AdminLogin = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     setEmail('');
     setPassword('');
-    const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo'));
+    let adminInfo = null;
+    let userInfo = null;
+    try {
+      const savedAdmin = localStorage.getItem('adminInfo');
+      if (savedAdmin && savedAdmin !== 'undefined') {
+        adminInfo = JSON.parse(savedAdmin);
+      }
+      const savedUser = localStorage.getItem('userInfo');
+      if (savedUser && savedUser !== 'undefined') {
+        userInfo = JSON.parse(savedUser);
+      }
+    } catch (e) {
+      console.error(e);
+    }
     if (adminInfo && adminInfo.role === 'superadmin') {
-      window.location.href = '/superadmin@123/';
+      navigate('/superadmin@123/', { replace: true });
+      return;
     }
   }, [navigate]);
 
@@ -24,6 +39,9 @@ const AdminLogin = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    // Proactively clear existing administrative session
+    localStorage.removeItem('adminInfo');
 
     if (email === 'admin' && password === 'admin123') {
       const testAdmin = {
@@ -33,24 +51,26 @@ const AdminLogin = () => {
         role: 'superadmin',
         token: 'test-token-123'
       };
-      sessionStorage.setItem('adminInfo', JSON.stringify(testAdmin));
+      localStorage.setItem('adminInfo', JSON.stringify(testAdmin));
+      sessionStorage.setItem('portalMode', 'admin');
       setTransitioning(true);
-      setTimeout(() => window.location.href = '/superadmin@123/', 800);
+      setTimeout(() => navigate('/superadmin@123/', { replace: true }), 800);
       return;
     }
 
     try {
       const { data } = await axios.post(`${API_BASE}/api/auth/login`, { email, password });
       
-      if (data.role !== 'superadmin') {
-        setError('Access Denied: Administrative privileges required.');
+      if (data.role === 'superadmin') {
+        localStorage.setItem('adminInfo', JSON.stringify(data));
+        sessionStorage.setItem('portalMode', 'admin');
+        setTransitioning(true);
+        setTimeout(() => navigate('/superadmin@123/', { replace: true }), 800);
+      } else {
+        setError('Access Denied: Only Superadmins can login here.');
         setLoading(false);
         return;
       }
-
-      sessionStorage.setItem('adminInfo', JSON.stringify(data));
-      setTransitioning(true);
-      setTimeout(() => window.location.href = '/superadmin@123/', 800);
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid administrative credentials');
       setLoading(false);
@@ -90,7 +110,7 @@ const AdminLogin = () => {
               Super Admin Portal<span className="auth-wave">🔐</span>
             </h2>
             <p className="auth-brand-desc auth-hover-slide" style={{textAlign:'center', maxWidth:'100%'}}>
-              Authorized access only. Manage content, analytics, and advertisements for Industrial Times network.
+              Authorized access only. Manage content, analytics, and advertisements for Industrial Times.
             </p>
 
             <div className="auth-brand-divider" style={{margin:'1.5rem auto'}}></div>
@@ -107,13 +127,13 @@ const AdminLogin = () => {
             </div>
           </div>
           <div className="auth-brand-footer-center">
-            © {new Date().getFullYear()} Industrial Times Networks. All rights reserved.
+            © {new Date().getFullYear()} Industrial Times. All rights reserved.
           </div>
         </div>
 
         {/* Right Form Panel */}
         <div className="auth-split-right">
-          <div className="auth-form-container auth-fade-in">
+          <div className="auth-form-container auth-fade-in" style={{ background: '#1e293b' }}>
             <div className="auth-form-header">
               <div className="auth-form-logo-center mb-4">
                 <Link to="/">
@@ -149,15 +169,23 @@ const AdminLogin = () => {
               <div className="auth-input-group auth-hover-input">
                 <i className="bi bi-key auth-input-icon"></i>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   name="admin-security-key"
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="new-password"
-                  className="auth-input auth-input-with-icon"
+                  className="auth-input auth-input-with-icon auth-input-with-eye"
                 />
+                <button
+                  type="button"
+                  className="auth-password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                </button>
               </div>
 
               <button type="submit" className="auth-submit-btn auth-submit-btn-red auth-hover-btn" disabled={loading || transitioning}>

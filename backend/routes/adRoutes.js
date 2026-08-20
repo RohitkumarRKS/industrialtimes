@@ -1,31 +1,26 @@
 const express = require('express');
-const { Op } = require('sequelize');
 const router = express.Router();
 const Ad = require('../models/Ad');
 const { protect, authorize } = require('../middleware/auth');
+const { Op } = require('sequelize');
 
-/* ─────────────────────────────────────────────────────────────────
-   SLOT → dimension mapping (single source of truth)
-───────────────────────────────────────────────────────────────── */
 const SLOT_DIMENSIONS = {
   'leaderboard':        { width: 728, height: 90  },
   'article-inline':     { width: 728, height: 90  },
   'left-skyscraper':    { width: 160, height: 600 },
   'right-half-page':    { width: 300, height: 600 },
-  'mobile-banner':      { width: 300, height: 100 },
+  'mobile-banner':      { width: 300, height: 50 },
   'mobile-rectangle':   { width: 300, height: 250 },
   'mobile-inline':      { width: 300, height: 200 },
   'top-bottom-banner':  { width: 970, height: 90  },
   'in-feed-rectangle':  { width: 336, height: 280 },
   'inline-news-footer': { width: 728, height: 90  },
   'popup':              { width: 300, height: 250 },
+  'colombia-ad':        { width: 728, height: 90  },
+  'mobile-leaderboard': { width: 300, height: 100 },
 };
 
-/* ─────────────────────────────────────────────────────────────────
-   GET /api/ads
-   Public — returns active ads, filtered by slot and/or category
-   Query params: ?slot=leaderboard  ?category=Manufacturing
-───────────────────────────────────────────────────────────────── */
+/* GET /api/ads — Public, returns active ads */
 router.get('/', async (req, res) => {
   const { slot, category, state, city } = req.query;
   try {
@@ -35,20 +30,17 @@ router.get('/', async (req, res) => {
       active: true,
       [Op.and]: [
         { [Op.or]: [{ startDate: null }, { startDate: { [Op.lte]: today } }] },
-        { [Op.or]: [{ endDate:   null }, { endDate:   { [Op.gte]: today } }] },
+        { [Op.or]: [{ endDate:   null }, { endDate:   { [Op.gte]: today } }] }
       ]
     };
 
     if (slot) where.slot = slot;
-
-    // Category targeting: match exact category OR global (null)
     if (category) {
       where[Op.or] = [{ category }, { category: null }];
     }
 
     const ads = await Ad.findAll({ where });
 
-    // Helper to shuffle array in-place
     const shuffle = (array) => {
       for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -78,25 +70,25 @@ router.get('/', async (req, res) => {
 
     globalAds = ads.filter(a => !a.targetState || a.targetState.trim() === '');
 
-    // Randomize within each priority level
     shuffle(stateCityAds);
     shuffle(stateOnlyAds);
     shuffle(globalAds);
 
-    // Combine in priority order: state+city -> state-only -> global
-    const matchedAds = [...stateCityAds, ...stateOnlyAds, ...globalAds];
-
+    let matchedAds = [];
+    if (stateCityAds.length > 0) {
+      matchedAds = stateCityAds;
+    } else if (stateOnlyAds.length > 0) {
+      matchedAds = stateOnlyAds;
+    } else {
+      matchedAds = globalAds;
+    }
     res.json(matchedAds);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-/* ─────────────────────────────────────────────────────────────────
-   GET /api/ads/availability
-   Public — returns booking data for the calendar
-   Query params: ?slot=leaderboard&state=Maharashtra&city=Mumbai
-───────────────────────────────────────────────────────────────── */
+/* GET /api/ads/availability */
 router.get('/availability', async (req, res) => {
   const { slot, state, city } = req.query;
   try {
@@ -105,14 +97,12 @@ router.get('/availability', async (req, res) => {
     if (state) where.targetState = state;
     if (city) where.targetCity = city;
 
-    // Get all ads (active + inactive) that match, with date ranges
     const ads = await Ad.findAll({
       where,
       attributes: ['id', 'slot', 'targetState', 'targetCity', 'startDate', 'endDate', 'active', 'advertiser', 'label'],
       order: [['startDate', 'ASC']]
     });
 
-    // Also get pending ad requests for the same slot/state/city
     let pendingRequests = [];
     try {
       const AdRequest = require('../models/AdRequest');
@@ -125,11 +115,11 @@ router.get('/availability', async (req, res) => {
         attributes: ['id', 'slot', 'targetState', 'targetCity', 'startDate', 'endDate', 'adTitle', 'companyName', 'status'],
         order: [['startDate', 'ASC']]
       });
-      pendingRequests = reqs.map(r => ({ ...r.toJSON(), type: 'pending' }));
+      pendingRequests = reqs.map(r => ({ ...r.get({ plain: true }), type: 'pending' }));
     } catch (e) { /* AdRequest table may not exist yet */ }
 
     const bookings = [
-      ...ads.map(a => ({ ...a.toJSON(), type: a.active ? 'booked' : 'inactive' })),
+      ...ads.map(a => ({ ...a.get({ plain: true }), type: a.active ? 'booked' : 'inactive' })),
       ...pendingRequests
     ];
 
@@ -139,9 +129,7 @@ router.get('/availability', async (req, res) => {
   }
 });
 
-/* ─────────────────────────────────────────────────────────────────
-   GET /api/ads/all   (Admin only — returns all ads incl. inactive)
-───────────────────────────────────────────────────────────────── */
+/* GET /api/ads/all (Admin) */
 router.get('/all', protect, authorize('superadmin'), async (req, res) => {
   try {
     const ads = await Ad.findAll({ order: [['slot', 'ASC'], ['createdAt', 'DESC']] });
@@ -151,22 +139,18 @@ router.get('/all', protect, authorize('superadmin'), async (req, res) => {
   }
 });
 
-/* ─────────────────────────────────────────────────────────────────
-   POST /api/ads   (Admin only — create or update)
-───────────────────────────────────────────────────────────────── */
+/* POST /api/ads (Admin — create or update) */
 router.post('/', protect, authorize('superadmin', 'corporate', 'author'), async (req, res) => {
-  const { id, slot, imageUrl, link, label, advertiser, category, targetState, targetCity, startDate, endDate, active } = req.body;
+  const { id, slot, imageUrl, link, label, advertiser, category, targetState, targetCity, startDate, endDate, active, isGoogleAd, googleAdCode, isSponsored } = req.body;
 
   const ALLOWED_PRIVATE_SLOTS = ['leaderboard', 'right-half-page', 'article-inline'];
   if (req.user.role !== 'superadmin' && !ALLOWED_PRIVATE_SLOTS.includes(slot)) {
     return res.status(403).json({ message: 'You are not authorized to upload advertisements for Google Ad slots.' });
   }
 
-  // Auto-set dimensions based on slot
   const dims = SLOT_DIMENSIONS[slot] || { width: 728, height: 90 };
 
   try {
-    // Check for overlap if ad is active and has dates/location
     if (active && targetState && targetCity && startDate && endDate) {
       const overlappingAd = await Ad.findOne({
         where: {
@@ -174,7 +158,7 @@ router.post('/', protect, authorize('superadmin', 'corporate', 'author'), async 
           targetState,
           targetCity,
           active: true,
-          id: { [Op.ne]: id || 'nonexistent' }, // Exclude current ad if updating
+          id: { [Op.ne]: id || 'nonexistent' },
           startDate: { [Op.lte]: endDate },
           endDate: { [Op.gte]: startDate }
         }
@@ -187,11 +171,11 @@ router.post('/', protect, authorize('superadmin', 'corporate', 'author'), async 
 
     let ad = id ? await Ad.findByPk(id) : null;
     if (ad) {
-      ad = await ad.update({ slot, imageUrl, link, label, advertiser, category, targetState: targetState || null, targetCity: targetCity || null, startDate: startDate || null, endDate: endDate || null, active, ...dims });
+      await ad.update({ slot, imageUrl, link, label, advertiser, category, targetState: targetState || null, targetCity: targetCity || null, startDate: startDate || null, endDate: endDate || null, active, isGoogleAd: !!isGoogleAd, googleAdCode: googleAdCode || '', isSponsored: !!isSponsored, ...dims });
       res.json(ad);
     } else {
       const newId = `${slot}_${Date.now()}`;
-      ad = await Ad.create({ id: newId, slot, imageUrl, link, label, advertiser, category, targetState: targetState || null, targetCity: targetCity || null, startDate: startDate || null, endDate: endDate || null, active, ...dims });
+      ad = await Ad.create({ id: newId, slot, imageUrl, link, label, advertiser, category, targetState: targetState || null, targetCity: targetCity || null, startDate: startDate || null, endDate: endDate || null, active, isGoogleAd: !!isGoogleAd, googleAdCode: googleAdCode || '', isSponsored: !!isSponsored, ...dims });
       res.status(201).json(ad);
     }
   } catch (error) {
@@ -199,9 +183,7 @@ router.post('/', protect, authorize('superadmin', 'corporate', 'author'), async 
   }
 });
 
-/* ─────────────────────────────────────────────────────────────────
-   PATCH /api/ads/:id/toggle   (Admin — toggle active)
-───────────────────────────────────────────────────────────────── */
+/* PATCH /api/ads/:id/toggle */
 router.patch('/:id/toggle', protect, authorize('superadmin'), async (req, res) => {
   try {
     const ad = await Ad.findByPk(req.params.id);
@@ -213,9 +195,7 @@ router.patch('/:id/toggle', protect, authorize('superadmin'), async (req, res) =
   }
 });
 
-/* ─────────────────────────────────────────────────────────────────
-   DELETE /api/ads/:id   (Admin only)
-───────────────────────────────────────────────────────────────── */
+/* DELETE /api/ads/:id */
 router.delete('/:id', protect, authorize('superadmin'), async (req, res) => {
   try {
     const ad = await Ad.findByPk(req.params.id);
@@ -227,9 +207,7 @@ router.delete('/:id', protect, authorize('superadmin'), async (req, res) => {
   }
 });
 
-/* ─────────────────────────────────────────────────────────────────
-   POST /api/ads/:id/impression  (Public — count impression)
-───────────────────────────────────────────────────────────────── */
+/* POST /api/ads/:id/impression */
 router.post('/:id/impression', async (req, res) => {
   try {
     const ad = await Ad.findByPk(req.params.id);
@@ -238,9 +216,7 @@ router.post('/:id/impression', async (req, res) => {
   } catch { res.json({ ok: false }); }
 });
 
-/* ─────────────────────────────────────────────────────────────────
-   POST /api/ads/:id/click  (Public — count click)
-───────────────────────────────────────────────────────────────── */
+/* POST /api/ads/:id/click */
 router.post('/:id/click', async (req, res) => {
   try {
     const ad = await Ad.findByPk(req.params.id);

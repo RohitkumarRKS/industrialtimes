@@ -55,8 +55,8 @@ const AD_SLOTS = [
   {
     id: 'mobile-banner',
     label: 'Mobile Banner Ad',
-    dimension: '300 × 100',
-    w: 300, h: 100,
+    dimension: '300 × 50',
+    w: 300, h: 50,
     position: 'Mobile Top/Bottom — Shows on mobile screens as a compact banner',
     icon: 'bi-phone',
     color: '#f59e0b',
@@ -109,14 +109,36 @@ const AD_SLOTS = [
   },
   {
     id: 'mobile-inline',
-    label: 'Mobile Inline Ad',
+    label: 'Mobile Inline Ad (Google Ad)',
     dimension: '300 × 200',
     w: 300, h: 200,
     position: 'Mobile Article — Shows between content on mobile screens',
     icon: 'bi-phone-fill',
     color: '#d946ef',
     bg: '#fdf4ff',
+    type: 'google',
+  },
+  {
+    id: 'colombia-ad',
+    label: 'Colombia Ad (Footer)',
+    dimension: '728 × 90',
+    w: 728, h: 90,
+    position: 'Bottom Footer — Shows above footer on scroll & auto-refreshes',
+    icon: 'bi-recycle',
+    color: '#0ea5e9',
+    bg: '#e0f2fe',
     type: 'private',
+  },
+  {
+    id: 'mobile-leaderboard',
+    label: 'Mobile Leaderboard Ad (Google Ad)',
+    dimension: '300 × 100',
+    w: 300, h: 100,
+    position: 'Mobile Top Header — Shows below navigation bar in mobile view',
+    icon: 'bi-phone-landscape-fill',
+    color: '#ff9800',
+    bg: '#fff8e1',
+    type: 'google',
   },
 ];
 
@@ -132,7 +154,7 @@ const EMPTY_AD = {
   label: 'Advertisement',
   advertiser: '',
   category: '',
-  targetState: '',
+  targetState: 'Global',
   targetCity: '',
   startDate: '',
   endDate: '',
@@ -142,7 +164,7 @@ const EMPTY_AD = {
   isSponsored: false,
 };
 
-const ManageAds = () => {
+const ManageAds = ({ adminInfo: propAdminInfo }) => {
   const [ads, setAds] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [currentAd, setCurrentAd] = useState(EMPTY_AD);
@@ -151,7 +173,24 @@ const ManageAds = () => {
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo'));
+  const adminInfo = (() => {
+    if (propAdminInfo) return propAdminInfo;
+    try {
+      const mode = sessionStorage.getItem('portalMode');
+      const saved = mode === 'user'
+        ? localStorage.getItem('userInfo')
+        : (localStorage.getItem('adminInfo') || localStorage.getItem('userInfo'));
+      if (saved && saved !== 'undefined') {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.role === 'superadmin' || parsed.isManager)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return null;
+  })();
   const config = { headers: { Authorization: `Bearer ${adminInfo?.token}` } };
 
   const fetchAds = async () => {
@@ -180,7 +219,7 @@ const ManageAds = () => {
       startDate: ad.startDate || '',
       endDate: ad.endDate || '',
       category: ad.category || '',
-      targetState: ad.targetState || '',
+      targetState: ad.targetState || 'Global',
       targetCity: ad.targetCity || '',
       isGoogleAd: !!ad.isGoogleAd,
       googleAdCode: ad.googleAdCode || '',
@@ -213,9 +252,14 @@ const ManageAds = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!currentAd.imageUrl) { setError('Please upload an ad image first.'); return; }
+    if (!currentAd.isGoogleAd && !currentAd.imageUrl) { setError('Please upload an ad image first.'); return; }
     try {
-      await axios.post(`${API_BASE}/api/ads`, currentAd, config);
+      const adToSave = {
+        ...currentAd,
+        targetState: currentAd.targetState === 'Global' ? '' : currentAd.targetState,
+        targetCity: currentAd.targetState === 'Global' ? '' : currentAd.targetCity
+      };
+      await axios.post(`${API_BASE}/api/ads`, adToSave, config);
       setSuccess('Ad saved successfully!');
       fetchAds();
       setTimeout(handleClose, 1200);
@@ -350,8 +394,11 @@ const ManageAds = () => {
                 </div>
               </div>
 
-              <div className="manage-ads-upload-btn" style={{ background: '#f8fafc', color: '#94a3b8', borderColor: '#e2e8f0', cursor: 'default' }}>
-                <i className="bi bi-info-circle"></i> Managed automatically by Google
+              <button className="manage-ads-upload-btn" style={{ background: slot.bg, color: slot.color, borderColor: `${slot.color}40` }} onClick={() => { handleOpenCreate(slot); setCurrentAd(prev => ({ ...prev, isGoogleAd: false })); }}>
+                <i className="bi bi-plus-lg"></i> Upload Private Ad ({slot.w}×{slot.h})
+              </button>
+              <div style={{ fontSize: '0.68rem', color: '#64748b', textAlign: 'center', marginTop: '6px' }}>
+                <i className="bi bi-info-circle me-1"></i> Private ad overrides Google AdSense when active
               </div>
             </div>
           );
@@ -484,7 +531,7 @@ const ManageAds = () => {
                   </div>
                 </div>
 
-                <div className="publish-field" style={{ display: 'flex', gap: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+                <div className="publish-field" style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
                     <input
                       type="checkbox"
@@ -494,34 +541,59 @@ const ManageAds = () => {
                     />
                     <span style={{ fontWeight: 700, color: '#1e293b' }}>Show "ADVERTISEMENT" Label?</span>
                   </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={currentAd.isGoogleAd}
+                      onChange={e => setCurrentAd(prev => ({ ...prev, isGoogleAd: e.target.checked }))}
+                      style={{ width: '18px', height: '18px' }}
+                    />
+                    <span style={{ fontWeight: 700, color: '#1e293b' }}>Use Custom Script / HTML Ad Code?</span>
+                  </label>
                 </div>
 
-                <div className="publish-field">
-                  <label>Ad Image <span style={{ color: '#ef4444' }}>*</span></label>
-                  <input type="file" accept="image/*" onChange={handleImageUpload} className="publish-file-input" />
-                  <div style={{ fontSize: '0.78rem', color: '#ef4444', marginTop: '0.35rem', fontWeight: 600 }}>
-                    ⚠ Required size: exactly {slotInfo?.w} × {slotInfo?.h} pixels. Ad will be displayed at this exact dimension.
+                {currentAd.isGoogleAd ? (
+                  <div className="publish-field">
+                    <label>Ad Script / HTML Code <span style={{ color: '#ef4444' }}>*</span></label>
+                    <textarea
+                      rows={5}
+                      placeholder="Paste your ad network script tag or HTML code here..."
+                      value={currentAd.googleAdCode || ''}
+                      onChange={e => setCurrentAd(prev => ({ ...prev, googleAdCode: e.target.value }))}
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontFamily: 'monospace' }}
+                      required
+                    />
                   </div>
-                  {uploading && <div style={{ color: '#3b82f6', fontSize: '0.8rem' }}><i className="bi bi-arrow-repeat spin"></i> Uploading...</div>}
-                  {currentAd.imageUrl && (
-                    <div className="publish-preview-img">
-                      <img
-                        src={currentAd.imageUrl.startsWith('http') ? currentAd.imageUrl : `${API_BASE}${currentAd.imageUrl}`}
-                        alt="preview"
-                      />
+                ) : (
+                  <div className="publish-field">
+                    <label>Ad Image <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input type="file" accept="image/*" onChange={handleImageUpload} className="publish-file-input" />
+                    <div style={{ fontSize: '0.78rem', color: '#ef4444', marginTop: '0.35rem', fontWeight: 600 }}>
+                      ⚠ Required size: exactly {slotInfo?.w} × {slotInfo?.h} pixels. Ad will be displayed at this exact dimension.
                     </div>
-                  )}
-                </div>
+                    {uploading && <div style={{ color: '#3b82f6', fontSize: '0.8rem' }}><i className="bi bi-arrow-repeat spin"></i> Uploading...</div>}
+                    {currentAd.imageUrl && (
+                      <div className="publish-preview-img">
+                        <img
+                          src={currentAd.imageUrl.startsWith('http') ? currentAd.imageUrl : `${API_BASE}${currentAd.imageUrl}`}
+                          alt="preview"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                <div className="publish-field">
-                  <label>Click-Through URL</label>
-                  <input
-                    type="url"
-                    placeholder="https://advertiser.com"
-                    value={currentAd.link}
-                    onChange={e => setCurrentAd(prev => ({ ...prev, link: e.target.value }))}
-                  />
-                </div>
+                {!currentAd.isGoogleAd && (
+                  <div className="publish-field">
+                    <label>Click-Through URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://advertiser.com"
+                      value={currentAd.link}
+                      onChange={e => setCurrentAd(prev => ({ ...prev, link: e.target.value }))}
+                    />
+                  </div>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="publish-field">
@@ -580,21 +652,22 @@ const ManageAds = () => {
                       required
                     >
                       <option value="">— Select State —</option>
+                      <option value="Global">Global (All States)</option>
                       {INDIAN_STATES.map(st => (
                         <option key={st} value={st}>{st}</option>
                       ))}
                     </select>
                   </div>
                   <div className="publish-field">
-                    <label>Target City <span style={{ color: '#ef4444' }}>*</span></label>
+                    <label>Target City {currentAd.targetState !== 'Global' && <span style={{ color: '#ef4444' }}>*</span>}</label>
                     <select
                       value={currentAd.targetCity || ''}
                       onChange={e => setCurrentAd(prev => ({ ...prev, targetCity: e.target.value, hideCalendar: false }))}
-                      disabled={!currentAd.targetState}
-                      required
+                      disabled={!currentAd.targetState || currentAd.targetState === 'Global'}
+                      required={currentAd.targetState && currentAd.targetState !== 'Global'}
                     >
-                      <option value="">— Select City —</option>
-                      {currentAd.targetState && INDIAN_STATES_CITIES[currentAd.targetState]?.map(city => (
+                      <option value="">{currentAd.targetState === 'Global' ? '— All Cities —' : '— Select City —'}</option>
+                      {currentAd.targetState && currentAd.targetState !== 'Global' && INDIAN_STATES_CITIES[currentAd.targetState]?.map(city => (
                         <option key={city} value={city}>{city}</option>
                       ))}
                     </select>

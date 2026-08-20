@@ -67,6 +67,15 @@ const Article = sequelize.define('Article', {
     type: DataTypes.TEXT,
     allowNull: true
   }
+}, {
+  indexes: [
+    { fields: ['createdAt'] },
+    { fields: ['category'] },
+    { fields: ['trending'] },
+    { fields: ['authorId'] },
+    { fields: ['state'] },
+    { fields: ['city'] }
+  ]
 });
 
 module.exports = Article;

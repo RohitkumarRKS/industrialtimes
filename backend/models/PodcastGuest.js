@@ -47,6 +47,25 @@ const PodcastGuest = sequelize.define('PodcastGuest', {
     type: DataTypes.JSON,
     allowNull: true,
     defaultValue: {}
+  },
+  paymentStatus: {
+    type: DataTypes.ENUM('pending', 'completed', 'not_required'),
+    defaultValue: 'not_required'
+  },
+  transactionId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null
+  },
+  amountPaid: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: null
+  },
+  razorpayOrderId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null
   }
 });
 

@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Premium Industrial Media Platform",
   "scripts": {
-    "postinstall": "cd frontend && npm install && cd ../backend && npm install --build-from-source=sqlite3 && cd ../frontend && npm run build",
+    "postinstall": "cd frontend && npm install && cd ../backend && npm install && cd ../frontend && npm run build",
     "start": "node backend/server.js",
-    "build": "cd frontend && npm install && cd ../backend && npm install --build-from-source=sqlite3 && cd ../frontend && npm run build",
+    "build": "cd frontend && npm install && cd ../backend && npm install && cd ../frontend && npm run build",
     "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
     "frontend": "npm run dev --prefix frontend",
     "backend": "node backend/server.js",

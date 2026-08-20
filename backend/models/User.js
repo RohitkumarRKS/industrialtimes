@@ -77,6 +77,31 @@ const User = sequelize.define('User', {
   profilePic: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  bankDetails: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null
+  },
+  aadharDetails: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null
+  },
+  bankVerificationStatus: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'unverified'
+  },
+  isManager: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  managerPermissions: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null
   }
 }, {
   hooks: {

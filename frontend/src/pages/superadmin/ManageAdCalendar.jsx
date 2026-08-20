@@ -8,13 +8,31 @@ const AD_SLOTS = [
   { id: 'article-inline', label: 'Article Inline', dim: '728×90', color: '#10b981', icon: 'bi-text-indent-left' },
   { id: 'left-skyscraper', label: 'Left Sidebar', dim: '160×600', color: '#8b5cf6', icon: 'bi-layout-sidebar' },
   { id: 'right-half-page', label: 'Right Sidebar', dim: '300×600', color: '#ef4444', icon: 'bi-layout-sidebar-reverse' },
-  { id: 'mobile-banner', label: 'Mobile Banner', dim: '300×100', color: '#f59e0b', icon: 'bi-phone' },
+  { id: 'mobile-banner', label: 'Mobile Banner', dim: '300×50', color: '#f59e0b', icon: 'bi-phone' },
   { id: 'mobile-rectangle', label: 'Mobile Rectangle', dim: '300×250', color: '#06b6d4', icon: 'bi-phone-landscape' },
   { id: 'mobile-inline', label: 'Mobile Inline', dim: '300×200', color: '#d946ef', icon: 'bi-phone-fill' },
 ];
 
-const ManageAdCalendar = () => {
-  const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo'));
+const ManageAdCalendar = ({ adminInfo: propAdminInfo }) => {
+  const getAdminInfo = () => {
+    if (propAdminInfo) return propAdminInfo;
+    try {
+      const mode = sessionStorage.getItem('portalMode');
+      const saved = mode === 'user'
+        ? localStorage.getItem('userInfo')
+        : (localStorage.getItem('adminInfo') || localStorage.getItem('userInfo'));
+      if (saved && saved !== 'undefined') {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.role === 'superadmin' || parsed.isManager)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return null;
+  };
+  const adminInfo = getAdminInfo();
   const [selectedSlot, setSelectedSlot] = useState('leaderboard');
   const [selectedState, setSelectedState] = useState('');
   const [selectedCity, setSelectedCity] = useState('');

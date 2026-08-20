@@ -5,7 +5,7 @@ const ReporterDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const saved = sessionStorage.getItem('userInfo');
+    const saved = localStorage.getItem('userInfo');
     if (saved) {
       navigate('/user-dashboard', { replace: true });
     } else {

@@ -1,14 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Spinner, Badge, Modal, Form, Button } from 'react-bootstrap';
 import { Helmet } from 'react-helmet-async';
 import Advertisement from '../components/Advertisement';
 import MobileStickyAd from '../components/MobileStickyAd';
+import ColombiaAd from '../components/ColombiaAd';
 import API_BASE from '../config/api';
+import { createSlug } from '../utils/slugify';
+import { getRelativeTime, formatPublishDate } from '../utils/timeFormatter';
+import { linkifyText } from '../utils/linkify';
+
+const getReporterLevel = (followersCount = 0, thresholds = { silver: 10, gold: 50, diamond: 100 }) => {
+  const count = parseInt(followersCount) || 0;
+  if (count >= (thresholds.diamond || 100)) return { level: 'Diamond', color: '#38bdf8', icon: 'bi-gem', bg: '#e0f2fe', text: '#0369a1' };
+  if (count >= (thresholds.gold || 50)) return { level: 'Gold', color: '#fbbf24', icon: 'bi-trophy-fill', bg: '#fef3c7', text: '#b45309' };
+  if (count >= (thresholds.silver || 10)) return { level: 'Silver', color: '#94a3b8', icon: 'bi-award-fill', bg: '#f1f5f9', text: '#475569' };
+  return { level: 'Bronze', color: '#cd7f32', icon: 'bi-award', bg: '#ffedd5', text: '#c2410c' };
+};
+
+const getSafeJSON = (key, fallback = null) => {
+  try {
+    const val = localStorage.getItem(key);
+    if (!val || val === 'undefined') return fallback;
+    return JSON.parse(val);
+  } catch (e) {
+    localStorage.removeItem(key);
+    return fallback;
+  }
+};
+
+// StarRating component defined outside to ensure reference stability and prevent React Error #300.
+const StarRating = ({ rating, onRate = null, interactive = false }) => {
+  const [hoverRating, setHoverRating] = useState(0);
+  
+  return (
+    <div className="d-flex align-items-center gap-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <i
+          key={star}
+          className={`bi ${star <= (hoverRating || rating) ? 'bi-star-fill' : 'bi-star'}`}
+          style={{ 
+            fontSize: interactive ? '1.5rem' : '1.1rem', 
+            color: star <= (hoverRating || rating) ? '#fbbf24' : '#e5e7eb',
+            cursor: interactive ? 'pointer' : 'default',
+            transition: 'color 0.2s, transform 0.1s',
+            transform: interactive && hoverRating === star ? 'scale(1.2)' : 'scale(1)'
+          }}
+          onMouseEnter={() => interactive && setHoverRating(star)}
+          onMouseLeave={() => interactive && setHoverRating(0)}
+          onClick={() => interactive && onRate && onRate(star)}
+        />
+      ))}
+    </div>
+  );
+};
 
 const ArticleDetail = () => {
-  const { id, category, title } = useParams();
+  const { id, title } = useParams();
+  const navigate = useNavigate();
   const [article, setArticle] = useState(null);
+  const [reporterThresholds, setReporterThresholds] = useState({ silver: 10, gold: 50, diamond: 100 });
   const [related, setRelated] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -20,21 +71,18 @@ const ArticleDetail = () => {
   const [newComment, setNewComment] = useState({ userName: '', content: '' });
   const [postingComment, setPostingComment] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
-
+ 
   // Reporter & Follow & Rating States
   const [userInfo, setUserInfo] = useState(null);
   const [authorProfile, setAuthorProfile] = useState(null);
   const [authorArticles, setAuthorArticles] = useState([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [ratingLoading, setRatingLoading] = useState(false);
-
+ 
   useEffect(() => {
-    const saved = sessionStorage.getItem('userInfo');
-    if (saved) {
-      setUserInfo(JSON.parse(saved));
-    }
+    setUserInfo(getSafeJSON('userInfo'));
   }, []);
-
+ 
   const fetchAuthorProfile = async (authorIdOrName) => {
     try {
       const res = await fetch(`${API_BASE}/api/auth/user/${encodeURIComponent(authorIdOrName)}`);
@@ -42,10 +90,16 @@ const ArticleDetail = () => {
         const data = await res.json();
         setAuthorProfile(data);
         
+        // Fetch articles based on resolved user profile details
+        if (data.id) {
+          fetchAuthorArticles(data.id);
+        } else if (data.name) {
+          fetchAuthorArticles(data.name);
+        }
+ 
         // Fetch follow status if logged in
-        const saved = sessionStorage.getItem('userInfo');
-        if (saved && data.id) {
-          const u = JSON.parse(saved);
+        const u = getSafeJSON('userInfo');
+        if (u && data.id) {
           if (u.role !== 'superadmin' && u.role !== 'admin' && parseInt(u.id) !== parseInt(data.id)) {
             const followRes = await fetch(`${API_BASE}/api/auth/follow-status/${data.id}`, {
               headers: { Authorization: `Bearer ${u.token}` }
@@ -70,7 +124,8 @@ const ArticleDetail = () => {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          setAuthorArticles(data.filter(a => a.id !== parseInt(id)).slice(0, 3));
+          const currentId = article?.id || parseInt(id);
+          setAuthorArticles(data.filter(a => a.id !== currentId).slice(0, 3));
         }
       }
     } catch (err) {
@@ -143,40 +198,29 @@ const ArticleDetail = () => {
     }
   };
 
-  const StarRating = ({ rating, onRate = null, interactive = false }) => {
-    const [hoverRating, setHoverRating] = useState(0);
-    
-    return (
-      <div className="d-flex align-items-center gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <i
-            key={star}
-            className={`bi ${star <= (hoverRating || rating) ? 'bi-star-fill' : 'bi-star'}`}
-            style={{ 
-              fontSize: interactive ? '1.5rem' : '1.1rem', 
-              color: star <= (hoverRating || rating) ? '#fbbf24' : '#e5e7eb',
-              cursor: interactive ? 'pointer' : 'default',
-              transition: 'color 0.2s, transform 0.1s',
-              transform: interactive && hoverRating === star ? 'scale(1.2)' : 'scale(1)'
-            }}
-            onMouseEnter={() => interactive && setHoverRating(star)}
-            onMouseLeave={() => interactive && setHoverRating(0)}
-            onClick={() => interactive && onRate && onRate(star)}
-          />
-        ))}
-      </div>
-    );
-  };
-
   useEffect(() => {
-    const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-    setIsFavorite(favorites.some(fav => fav.id === parseInt(id)));
-    
     const fetchArticle = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/api/articles/${id}`);
+        let res;
+        if (id) {
+          res = await fetch(`${API_BASE}/api/articles/${id}`);
+        } else {
+          res = await fetch(`${API_BASE}/api/articles/slug/${encodeURIComponent(title)}`);
+        }
+        
+        if (!res.ok) {
+          setArticle(null);
+          setLoading(false);
+          return;
+        }
+
         const data = await res.json();
+        if (!data || !data.id) {
+          setArticle(null);
+          setLoading(false);
+          return;
+        }
         
         // Handle both 'image' and 'imageUrl' for compatibility
         const imgPath = data.image || data.imageUrl;
@@ -197,68 +241,69 @@ const ArticleDetail = () => {
           } else {
             // Prepend backend URL and ensure /uploads/ is included if missing
             let normalizedVideo = data.video.startsWith('/') ? data.video : `/${data.video}`;
-            // If the path doesn't already contain 'uploads', we might need to be careful,
-            // but usually the backend returns paths like 'uploads/filename.mp4'
             data.video = `${API_BASE}${normalizedVideo}`;
           }
         }
         
         setArticle(data);
         setLikes(data.likesCount || 0);
+
+        // Favorites check
+        const favorites = getSafeJSON('favorites', []);
+        setIsFavorite(favorites.some(fav => fav.id === data.id));
         
         // Check if user has already liked this in this session/browser
-        const likedArticles = JSON.parse(localStorage.getItem('liked_articles') || '[]');
-        setHasLiked(likedArticles.includes(parseInt(id)));
+        const likedArticles = getSafeJSON('liked_articles', []);
+        setHasLiked(likedArticles.includes(data.id));
 
-        // Fetch comments
-        const commRes = await fetch(`${API_BASE}/api/articles/${id}/comments`);
-        const commData = await commRes.json();
-        setComments(commData);
-        
-        // Fetch related articles in the same category
-        if (data.category) {
-          try {
-            const relRes = await fetch(`${API_BASE}/api/articles/category/${data.category}`);
-            const relData = await relRes.json();
-            if (Array.isArray(relData)) {
-              const processedRelated = relData.filter(a => a.id !== parseInt(id)).slice(0, 2).map(item => {
-                let imgPath = item.image || item.imageUrl;
-                if (imgPath) {
-                  if (!imgPath.startsWith('http')) {
-                    const normalizedPath = imgPath.startsWith('/') ? imgPath : `/${imgPath}`;
-                    imgPath = `${API_BASE}${normalizedPath}`;
-                  }
-                }
-                return { ...item, processedImage: imgPath };
-              });
-              setRelated(processedRelated);
-            }
-          } catch (e) {
-            console.error("Related articles fetch error", e);
-          }
-        }
-
-        // Fetch author profile & articles
-        if (data.authorId) {
-          fetchAuthorProfile(data.authorId);
-          fetchAuthorArticles(data.authorId);
-        } else if (data.author) {
-          fetchAuthorProfile(data.author);
-          fetchAuthorArticles(data.author);
-        }
-        
         setLoading(false);
         window.scrollTo(0, 0);
+
+        // Fetch comments, related articles, and author profile in PARALLEL for maximum speed
+        const isSystemAdmin = !data.author || 
+          data.author.toLowerCase() === 'admin' || 
+          data.author.toLowerCase() === 'superadmin' || 
+          data.author === 'Industrial Times';
+        const lookupKey = isSystemAdmin ? 'Industrial Times' : (data.authorId || data.author);
+
+        fetchAuthorProfile(lookupKey);
+
+        Promise.allSettled([
+          fetch(`${API_BASE}/api/articles/${data.id}/comments`).then(r => r.ok ? r.json() : []),
+          data.category ? fetch(`${API_BASE}/api/articles/category/${data.category}`).then(r => r.ok ? r.json() : []) : Promise.resolve([])
+        ]).then(([commResult, relResult]) => {
+          if (commResult.status === 'fulfilled' && Array.isArray(commResult.value)) {
+            setComments(commResult.value);
+          }
+          if (relResult.status === 'fulfilled' && Array.isArray(relResult.value)) {
+            const processedRelated = relResult.value.filter(a => a.id !== data.id).slice(0, 2).map(item => {
+              let imgPath = item.image || item.imageUrl;
+              if (imgPath && !imgPath.startsWith('http')) {
+                const normalizedPath = imgPath.startsWith('/') ? imgPath : `/${imgPath}`;
+                imgPath = `${API_BASE}${normalizedPath}`;
+              }
+              return { ...item, processedImage: imgPath };
+            });
+            setRelated(processedRelated);
+          }
+        });
+
+        // Redirect to canonical URL if the ID parameter is missing
+        if (!id && data.id) {
+          const canonicalUrl = `/article/${createSlug(data.category || 'news')}/${createSlug(data.title)}/${data.id}`;
+          navigate(canonicalUrl, { replace: true });
+        }
       } catch (error) {
         console.error("Error fetching article:", error);
+        setArticle(null);
         setLoading(false);
       }
     };
     fetchArticle();
-  }, [id]);
+  }, [id, title]);
 
   const toggleFavorite = () => {
-    let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+    let favorites = getSafeJSON('favorites', []);
     if (isFavorite) {
       favorites = favorites.filter(fav => fav.id !== article.id);
     } else {
@@ -275,14 +320,15 @@ const ArticleDetail = () => {
   };
 
   const handleLike = async () => {
-    if (hasLiked) return;
+    if (hasLiked || !article) return;
+    const articleId = article.id;
     try {
-      const res = await fetch(`${API_BASE}/api/articles/${id}/like`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/api/articles/${articleId}/like`, { method: 'POST' });
       const data = await res.json();
       setLikes(data.likesCount);
       setHasLiked(true);
-      const likedArticles = JSON.parse(localStorage.getItem('liked_articles') || '[]');
-      likedArticles.push(parseInt(id));
+      const likedArticles = getSafeJSON('liked_articles', []);
+      likedArticles.push(articleId);
       localStorage.setItem('liked_articles', JSON.stringify(likedArticles));
     } catch (err) {
       console.error("Like failed", err);
@@ -291,19 +337,31 @@ const ArticleDetail = () => {
 
   const handlePostComment = async (e) => {
     e.preventDefault();
-    if (!newComment.userName || !newComment.content) return;
+    if (!newComment.content || !article) return;
+    if (!userInfo) {
+      alert("Please log in to post a comment.");
+      return;
+    }
+    const articleId = article.id;
     setPostingComment(true);
     try {
-      const res = await fetch(`${API_BASE}/api/articles/${id}/comments`, {
+      const res = await fetch(`${API_BASE}/api/articles/${articleId}/comments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newComment)
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userInfo.token}`
+        },
+        body: JSON.stringify({ content: newComment.content })
       });
+      if (!res.ok) {
+        throw new Error("Failed to post comment");
+      }
       const data = await res.json();
       setComments([data, ...comments]);
       setNewComment({ userName: '', content: '' });
     } catch (err) {
       console.error("Comment failed", err);
+      alert("Failed to post comment. Please try again.");
     } finally {
       setPostingComment(false);
     }
@@ -312,8 +370,8 @@ const ArticleDetail = () => {
   const [copyToast, setCopyToast] = useState('');
 
   const handleShare = (platform) => {
-    const url = window.location.href;
-    const text = `${article.title} — Read on Industrial Times Network`;
+    const url = `${window.location.protocol}//${window.location.host}/article/${createSlug(article.category || 'news')}/${createSlug(article.title)}`;
+    const text = `${article.title} — Read on Industrial Times`;
     const excerpt = article.excerpt || (article.content ? article.content.substring(0, 200) : '');
     
     // Use Web Share API if available and on mobile
@@ -383,11 +441,80 @@ const ArticleDetail = () => {
     );
   }
 
-  const createSlug = (text) => {
-    return text
-      .toLowerCase()
-      .replace(/ /g, '-')
-      .replace(/[^\w-]+/g, '');
+
+  const getCategoryLink = (categoryName) => {
+    if (!categoryName) return '/';
+    const cat = categoryName.toLowerCase().trim();
+    const knownCategories = ['news', 'regional', 'articles', 'trending', 'oem', 'automation', 'interview', 'startup', 'business', 'event', 'entertainment', 'sports', 'education', 'tender', 'astrology'];
+    if (knownCategories.includes(cat)) {
+      return `/${cat}`;
+    }
+    return `/category/${encodeURIComponent(categoryName)}`;
+  };
+
+  const renderEmbed = (url) => {
+    if (!url) return null;
+    
+    // YouTube
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      let videoId = '';
+      if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1]?.split('?')[0]?.split('&')[0];
+      } else if (url.includes('watch?v=')) {
+        videoId = url.split('watch?v=')[1]?.split('&')[0];
+      } else if (url.includes('embed/')) {
+        videoId = url.split('embed/')[1]?.split('?')[0]?.split('&')[0];
+      } else if (url.includes('shorts/')) {
+        videoId = url.split('shorts/')[1]?.split('?')[0]?.split('&')[0];
+      }
+
+      const params = 'autoplay=1&mute=1&enablejsapi=1&rel=0&modestbranding=1&iv_load_policy=3' + (videoId ? `&playlist=${videoId}` : '');
+      let baseSrc = url.includes('youtu.be') 
+        ? url.replace('youtu.be/', 'www.youtube.com/embed/') 
+        : url.replace('watch?v=', 'embed/').split('&')[0];
+      
+      const src = videoId 
+        ? `https://www.youtube.com/embed/${videoId}?${params}`
+        : `${baseSrc}${baseSrc.includes('?') ? '&' : '?'}${params}`;
+
+      return (
+        <div className="ratio ratio-16x9 w-100">
+          <iframe src={src} title="YouTube Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
+        </div>
+      );
+    }
+    
+    // Facebook
+    if (url.includes('facebook.com')) {
+      const src = `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(url)}&show_text=true&width=500&autoplay=true`;
+      return (
+        <div className="d-flex justify-content-center w-100 py-4 bg-white">
+          <iframe src={src} width="500" height="500" style={{ border: 'none', overflow: 'hidden' }} scrolling="no" frameBorder="0" allowFullScreen={true} allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
+        </div>
+      );
+    }
+    
+    // Instagram
+    if (url.includes('instagram.com/p/') || url.includes('instagram.com/reel/')) {
+      const src = url.endsWith('/') ? `${url}embed` : `${url}/embed`;
+      return (
+        <div className="d-flex justify-content-center w-100 py-4 bg-white">
+          <iframe src={src} width="400" height="500" frameBorder="0" scrolling="no" allowTransparency="true" allow="encrypted-media"></iframe>
+        </div>
+      );
+    }
+    
+    // Generic Fallback
+    return (
+      <div className="d-flex flex-column align-items-center justify-content-center h-100 py-5 w-100" style={{ background: '#f8f9fa' }}>
+        <i className="bi bi-link-45deg text-danger" style={{ fontSize: '3rem' }}></i>
+        <h5 className="fw-bold mt-3 text-dark">External Media Attached</h5>
+        <p className="text-muted small mb-4">Click below to view this media content on its native platform.</p>
+        <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
+          <i className="bi bi-box-arrow-up-right me-2"></i> View Media Content
+        </a>
+      </div>
+    );
   };
 
   // Helper to split content and inject ads
@@ -399,7 +526,7 @@ const ArticleDetail = () => {
       <>
         {paragraphs.map((p, index) => (
           <React.Fragment key={index}>
-            <p>{p}</p>
+            <p>{linkifyText(p)}</p>
             {index === 0 && (
               <>
                 <div className="my-3 py-2 border-top border-bottom border-light ad-desktop-only" style={{ backgroundColor: '#fcfcfc' }}>
@@ -426,7 +553,7 @@ const ArticleDetail = () => {
         <meta name="description" content={articleDescription} />
         {article.tags && <meta name="keywords" content={article.tags} />}
         <meta property="og:type" content="article" />
-        <meta property="og:site_name" content="Industrial Times Network" />
+        <meta property="og:site_name" content="Industrial Times" />
         <meta property="og:title" content={article.title} />
         <meta property="og:description" content={articleDescription} />
         <meta property="og:image" content={article.image} />
@@ -458,29 +585,49 @@ const ArticleDetail = () => {
             <i className="bi bi-broadcast me-2"></i> LIVE UPDATES
           </Badge>
           
-          <h1 className="article-title mb-4">{article.title}</h1>
+          {/* CHANGED: Heading size adjusted responsively: clamp(1.4rem, 5vw, 2.0rem) */}
+          <h1 className="article-title mb-4" style={{ fontSize: 'clamp(1.4rem, 5vw, 2.0rem)', fontWeight: 800 }}>{article.title}</h1>
           
           <div className="d-flex flex-wrap align-items-center gap-3 mb-4 mb-md-5 pb-3 pb-md-4 border-bottom">
-            {article.author ? (
-              <Link to={`/author/${article.authorId || article.author}`} className="text-decoration-none">
-                <div className="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 hover-scale" style={{ width: '40px', height: '40px' }}>
-                  <i className="bi bi-person-fill fs-5"></i>
-                </div>
-              </Link>
-            ) : (
-              <div className="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px' }}>
-                <i className="bi bi-person-fill fs-5"></i>
-              </div>
-            )}
+            {(() => {
+              const isSystemAdmin = !article.author || 
+                article.author.toLowerCase() === 'admin' || 
+                article.author.toLowerCase() === 'superadmin' || 
+                article.author === 'Industrial Times';
+              
+              const authorProfileLink = isSystemAdmin ? '/author/Industrial-Times' : `/author/${article.authorId || article.author}`;
+
+              return (
+                <Link to={authorProfileLink} className="text-decoration-none">
+                  <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 hover-scale shadow-sm bg-white border border-light" style={{ width: '40px', height: '40px', overflow: 'hidden' }}>
+                    {isSystemAdmin ? (
+                      <img src="/icon.png" alt="ITN Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '2px' }} />
+                    ) : (
+                      <div className="bg-dark text-white w-100 h-100 d-flex align-items-center justify-content-center">
+                        <i className="bi bi-person-fill fs-5"></i>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              );
+            })()}
             <div>
               <div className="fw-black small text-uppercase d-flex align-items-center gap-2">
-                {article.author ? (
-                  <Link to={`/author/${article.authorId || article.author}`} className="text-dark hover-text-red text-decoration-none">
-                    {article.author}
-                  </Link>
-                ) : (
-                  <span className="text-dark">Industrial Times Editorial Team</span>
-                )}
+                {(() => {
+                  const isSystemAdmin = !article.author || 
+                    article.author.toLowerCase() === 'admin' || 
+                    article.author.toLowerCase() === 'superadmin' || 
+                    article.author === 'Industrial Times';
+                  
+                  const displayAuthorName = isSystemAdmin ? 'Industrial Times' : article.author;
+                  const authorProfileLink = isSystemAdmin ? '/author/Industrial-Times' : `/author/${article.authorId || article.author}`;
+
+                  return (
+                    <Link to={authorProfileLink} className="text-dark hover-text-red text-decoration-none">
+                      {displayAuthorName}
+                    </Link>
+                  );
+                })()}
                 {authorProfile && authorProfile.averageRating > 0 && (
                   <span className="text-warning fw-bold d-flex align-items-center gap-1" style={{ fontSize: '0.8rem' }} title={`Rated ${authorProfile.averageRating} out of 5`}>
                     <i className="bi bi-star-fill"></i>
@@ -489,7 +636,7 @@ const ArticleDetail = () => {
                 )}
               </div>
               <div className="x-small text-muted fw-bold mt-1">
-                PUBLISHED: {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today'} • 5 MIN READ
+                {formatPublishDate(article.createdAt || article.date)} • 5 MIN READ
               </div>
             </div>
             <div className="ms-auto d-flex flex-wrap gap-2 align-items-center">
@@ -528,9 +675,11 @@ const ArticleDetail = () => {
           {/* Share Modal Moved outside Container */}
 
           <div className="article-content">
-            <div className="img-zoom-container mb-5 rounded-4 shadow-sm overflow-hidden bg-black" style={{ minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="mb-5 rounded-4 shadow-sm overflow-hidden bg-black" style={{ minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {article.video ? (
                  <video 
+                    autoPlay
+                    muted
                     controls 
                     playsInline
                     className="w-100" 
@@ -541,25 +690,13 @@ const ArticleDetail = () => {
                     Your browser does not support the video tag.
                  </video>
               ) : article.videoUrl ? (
-                 <div className="ratio ratio-16x9">
-                    <iframe 
-                      src={article.videoUrl.includes('youtu.be') 
-                        ? article.videoUrl.replace('youtu.be/', 'www.youtube.com/embed/') 
-                        : article.videoUrl.replace('watch?v=', 'embed/').split('&')[0]
-                      } 
-                      title="Video Content" 
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                      allowFullScreen
-                    ></iframe>
-                 </div>
+                 renderEmbed(article.videoUrl)
               ) : article.image ? (
                  <img 
                    src={article.image} 
                    alt={article.title} 
-                   className="w-100 hover-scale" 
-                   style={{ maxHeight: '500px', objectFit: 'cover', cursor: 'pointer', transition: 'transform 0.3s ease' }} 
-                   onClick={() => setShowImageModal(true)}
-                   title="Click to view full image"
+                   className="w-100" 
+                   style={{ maxHeight: '600px', objectFit: 'contain' }} 
                  />
               ) : (
                  <div className="d-flex align-items-center justify-content-center h-100 py-5">
@@ -568,9 +705,11 @@ const ArticleDetail = () => {
               )}
             </div>
             
-            <p className="lead fw-bold text-dark mb-4">
-              {article.excerpt || "Industry leaders are monitoring shifts reshaping the global landscape. This represents a fundamental transformation in industrial systems."}
-            </p>
+            {article.excerpt && (
+              <p className="lead fw-bold text-dark mb-4">
+                {linkifyText(article.excerpt)}
+              </p>
+            )}
             
             <div className="article-body-text">
               {renderContentWithAds(article.content)}
@@ -581,12 +720,12 @@ const ArticleDetail = () => {
                   if (highlightList && Array.isArray(highlightList) && highlightList.length > 0) {
                     return (
                       <div className="bg-light p-4 rounded-4 my-5 border-start border-danger border-4 shadow-sm">
-                        <h5 className="fw-black mb-3 text-uppercase small" style={{ letterSpacing: '1px' }}>Industry Highlights</h5>
+                        <h5 className="fw-black mb-3 text-uppercase small" style={{ letterSpacing: '1px' }}>Article Keywords</h5>
                         <ul className="mb-0 small fw-medium text-dark">
                           {highlightList.map((h, i) => (
                             <li key={i} className="mb-2 d-flex align-items-start gap-2">
                               <i className="bi bi-check-circle-fill text-danger mt-1" style={{ fontSize: '0.8rem' }}></i>
-                              {h}
+                              <span>{linkifyText(h)}</span>
                             </li>
                           ))}
                         </ul>
@@ -610,14 +749,14 @@ const ArticleDetail = () => {
               <div className="reporter-profile-card bg-white p-4 rounded-4 shadow-sm border border-light mt-5 mb-4 hover-lift-subtle">
                 <Row className="align-items-center g-4">
                   <Col md={7} className="d-flex flex-column flex-sm-row align-items-center align-items-sm-start text-center text-sm-start gap-3">
-                    <Link to={`/author/${authorProfile.id}`} className="text-decoration-none">
+                    <Link to={`/author/${authorProfile.id || 'Industrial-Times'}`} className="text-decoration-none">
                       <div className="bg-light rounded-circle shadow-sm p-1" style={{ width: '80px', height: '80px', flexShrink: 0 }}>
                         {authorProfile.profilePic ? (
                           <img 
-                            src={authorProfile.profilePic.startsWith('http') ? authorProfile.profilePic : `${API_BASE}${authorProfile.profilePic.startsWith('/') ? '' : '/'}${authorProfile.profilePic}`} 
+                            src={authorProfile.profilePic.startsWith('http') ? authorProfile.profilePic : (authorProfile.profilePic === '/icon.png' ? '/icon.png' : `${API_BASE}${authorProfile.profilePic.startsWith('/') ? '' : '/'}${authorProfile.profilePic}`)} 
                             alt={authorProfile.name}
                             className="rounded-circle w-100 h-100" 
-                            style={{ objectFit: 'cover' }} 
+                            style={{ objectFit: authorProfile.profilePic === '/icon.png' ? 'contain' : 'cover', padding: authorProfile.profilePic === '/icon.png' ? '6px' : '0px' }} 
                           />
                         ) : (
                           <div className="bg-danger rounded-circle w-100 h-100 d-flex align-items-center justify-content-center text-white fw-black fs-4">
@@ -628,15 +767,29 @@ const ArticleDetail = () => {
                     </Link>
                     <div>
                       <div className="d-flex align-items-center gap-2 justify-content-center justify-content-sm-start mb-1">
-                        <Link to={`/author/${authorProfile.id}`} className="text-dark text-decoration-none hover-text-red">
+                        <Link to={`/author/${authorProfile.id || 'Industrial-Times'}`} className="text-dark text-decoration-none hover-text-red">
                           <h5 className="fw-bold mb-0">{authorProfile.name}</h5>
                         </Link>
-                        <Badge bg="danger" className="x-small text-uppercase px-2 py-1 shadow-sm" style={{ fontSize: '0.6rem' }}>
-                          {authorProfile.role === 'corporate' ? 'Corporate' : 'Reporter'}
-                        </Badge>
+                        {(() => {
+                          if (authorProfile.role === 'corporate') {
+                            return <Badge bg="purple" className="x-small text-uppercase px-2 py-1 shadow-sm" style={{ fontSize: '0.6rem', background: '#8b5cf6' }}>Corporate</Badge>;
+                          }
+                          if (authorProfile.role === 'superadmin') {
+                            return <Badge bg="danger" className="x-small text-uppercase px-2 py-1 shadow-sm" style={{ fontSize: '0.6rem' }}>Editorial</Badge>;
+                          }
+                          const lvl = getReporterLevel(authorProfile.followersCount, reporterThresholds);
+                          return (
+                            <Badge 
+                              className="x-small text-uppercase px-2 py-1 shadow-sm d-flex align-items-center gap-1" 
+                              style={{ fontSize: '0.6rem', backgroundColor: lvl.color, color: '#fff' }}
+                            >
+                              <i className={`bi ${lvl.icon}`}></i> {lvl.level}
+                            </Badge>
+                          );
+                        })()}
                       </div>
                       <p className="text-muted small mb-2" style={{ lineHeight: '1.4' }}>
-                        {authorProfile.bio || 'Expert Analyst & News contributor at Industrial Times Network.'}
+                        {authorProfile.bio || 'Expert Analyst & News contributor at Industrial Times.'}
                       </p>
                       {authorProfile.expertise && (
                         <div className="x-small text-muted fw-bold">
@@ -701,7 +854,7 @@ const ArticleDetail = () => {
                     return (
                       <Col md={4} key={art.id}>
                         <div className="bg-white rounded-4 shadow-sm border border-light overflow-hidden hover-lift h-100 d-flex flex-column">
-                          <Link to={`/article/${createSlug(art.category)}/${createSlug(art.title)}/${art.id}`} className="text-decoration-none text-dark flex-grow-1">
+                          <Link to={`/article/${createSlug(art.category)}/${createSlug(art.title)}`} className="text-decoration-none text-dark flex-grow-1">
                             <div style={{ height: '140px', overflow: 'hidden', position: 'relative' }}>
                               {processedImg ? (
                                 <img src={processedImg} className="w-100 h-100" style={{ objectFit: 'cover' }} alt={art.title} />
@@ -716,7 +869,7 @@ const ArticleDetail = () => {
                               <h6 className="fw-bold mb-2 text-dark" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: '0.95rem' }}>{art.title}</h6>
                               <div className="x-small text-muted">
                                 <i className="bi bi-calendar-event me-1"></i>
-                                {new Date(art.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                {getRelativeTime(art.createdAt || art.date)}
                               </div>
                             </div>
                           </Link>
@@ -728,12 +881,8 @@ const ArticleDetail = () => {
               </div>
             )}
 
-            <div className="mt-5 pt-5 border-top d-flex flex-wrap gap-2">
-              <span className="fw-bold me-2">TAGS:</span>
-              <Link to={`/category/${article.category}`} className="badge bg-light text-dark border px-3 text-decoration-none tag-hover">#{article.category}</Link>
-              <Link to="/category/IndustrialUpdates" className="badge bg-light text-dark border px-3 text-decoration-none tag-hover">#IndustrialUpdates</Link>
-              <Link to="/category/GlobalTrends" className="badge bg-light text-dark border px-3 text-decoration-none tag-hover">#GlobalTrends</Link>
-            </div>
+            {/* COLOMBIA AD NETWORK PLACEMENT */}
+            <ColombiaAd />
 
             {/* MOBILE RELATED STORIES — shows only on mobile/tablet screens */}
             {related.length > 0 && (
@@ -754,9 +903,9 @@ const ArticleDetail = () => {
                         )}
                         <div>
                           <h6 className="fw-bold mb-1" style={{ fontSize: '0.88rem', lineHeight: '1.4' }}>
-                            <Link to={`/article/${createSlug(item.category)}/${createSlug(item.title)}/${item.id}`} className="text-dark hover-text-red text-decoration-none" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</Link>
+                            <Link to={`/article/${createSlug(item.category)}/${createSlug(item.title)}`} className="text-dark hover-text-red text-decoration-none" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</Link>
                           </h6>
-                          <div className="x-small text-danger fw-bold text-uppercase mt-1">{item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today'}</div>
+                          <div className="x-small text-danger fw-bold text-uppercase mt-1">{getRelativeTime(item.date || item.createdAt)}</div>
                         </div>
                       </div>
                     </div>
@@ -784,16 +933,16 @@ const ArticleDetail = () => {
                   )}
                   <div>
                     <h6 className="fw-bold mb-1 x-small" style={{ fontSize: '0.85rem' }}>
-                      <Link to={`/article/${createSlug(item.category)}/${createSlug(item.title)}/${item.id}`} className="text-dark hover-text-red text-decoration-none" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</Link>
+                      <Link to={`/article/${createSlug(item.category)}/${createSlug(item.title)}`} className="text-dark hover-text-red text-decoration-none" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</Link>
                     </h6>
-                    <div className="x-small text-danger fw-bold text-uppercase mt-1">{item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Today'}</div>
+                    <div className="x-small text-danger fw-bold text-uppercase mt-1">{getRelativeTime(item.date || item.createdAt)}</div>
                   </div>
                 </div>
               ))}
             </div>
             {related.length > 0 && (
               <div className="text-start mb-5">
-                <Link to={`/category/${article.category}`} className="btn btn-outline-danger btn-sm rounded-pill px-4 fw-bold shadow-sm hover-lift text-uppercase w-100" style={{ letterSpacing: '0.5px' }}>
+                <Link to={getCategoryLink(article.category)} className="btn btn-outline-danger btn-sm rounded-pill px-4 fw-bold shadow-sm hover-lift text-uppercase w-100" style={{ letterSpacing: '0.5px' }}>
                   View All Related Stories
                 </Link>
               </div>
@@ -806,10 +955,8 @@ const ArticleDetail = () => {
         </Col>
       </Row>
 
-      {/* ── TOP / BOTTOM BANNER (970 × 90) ── */}
-      <div className="d-none d-xl-block mt-4 mb-0 text-center">
-        <Advertisement slot="top-bottom-banner" />
-      </div>
+
+
     </Container>
 
       <Modal show={showShareModal} onHide={() => setShowShareModal(false)} centered contentClassName="border-0 shadow-lg rounded-4" className="premium-modal">
@@ -830,7 +977,7 @@ const ArticleDetail = () => {
                  {article.title}
                </h6>
                <span className="text-muted x-small text-uppercase fw-bold d-block mt-1" style={{ letterSpacing: '0.5px', color: '#64748b' }}>
-                 industrial-times.com
+                 industrialtimes.in
                </span>
             </div>
           </div>
@@ -910,37 +1057,46 @@ const ArticleDetail = () => {
         <Modal.Body className="p-0">
           <div className="comments-modal-body custom-scrollbar" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
             <div className="p-4">
-              <Form onSubmit={handlePostComment} className="mb-5 bg-white border p-4 rounded-4 shadow-sm">
-                <h6 className="fw-bold mb-3">Join the discussion</h6>
-                <Row className="g-3">
-                  <Col md={12}>
-                    <Form.Control 
-                      type="text" 
-                      placeholder="Your Name" 
-                      className="rounded-3 border-light bg-light py-2"
-                      value={newComment.userName}
-                      onChange={(e) => setNewComment({ ...newComment, userName: e.target.value })}
-                      required
-                    />
-                  </Col>
-                  <Col md={12}>
-                    <Form.Control 
-                      as="textarea" 
-                      rows={3} 
-                      placeholder="Share your thoughts..." 
-                      className="rounded-3 border-light bg-light py-2"
-                      value={newComment.content}
-                      onChange={(e) => setNewComment({ ...newComment, content: e.target.value })}
-                      required
-                    />
-                  </Col>
-                  <Col md={12}>
-                    <Button variant="danger" type="submit" className="rounded-pill px-4 fw-bold shadow-sm w-100 py-2" disabled={postingComment}>
-                      {postingComment ? 'POSTING...' : 'POST COMMENT'}
-                    </Button>
-                  </Col>
-                </Row>
-              </Form>
+              {userInfo ? (
+                <Form onSubmit={handlePostComment} className="mb-5 bg-white border p-4 rounded-4 shadow-sm">
+                  <div className="d-flex align-items-center gap-3 mb-3">
+                    <div className="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: '40px', height: '40px' }}>
+                      {userInfo.name ? userInfo.name.charAt(0).toUpperCase() : 'U'}
+                    </div>
+                    <div>
+                      <div className="fw-bold small">Commenting as</div>
+                      <div className="text-danger fw-bold">{userInfo.name}</div>
+                    </div>
+                  </div>
+                  <Row className="g-3">
+                    <Col md={12}>
+                      <Form.Control 
+                        as="textarea" 
+                        rows={3} 
+                        placeholder="Share your thoughts..." 
+                        className="rounded-3 border-light bg-light py-2"
+                        value={newComment.content}
+                        onChange={(e) => setNewComment({ ...newComment, content: e.target.value })}
+                        required
+                      />
+                    </Col>
+                    <Col md={12}>
+                      <Button variant="danger" type="submit" className="rounded-pill px-4 fw-bold shadow-sm w-100 py-2" disabled={postingComment}>
+                        {postingComment ? 'POSTING...' : 'POST COMMENT'}
+                      </Button>
+                    </Col>
+                  </Row>
+                </Form>
+              ) : (
+                <div className="mb-5 bg-light border p-4 rounded-4 text-center shadow-sm">
+                  <i className="bi bi-lock-fill text-danger display-6 mb-3 d-block opacity-75"></i>
+                  <h6 className="fw-bold mb-2">Join the Discussion</h6>
+                  <p className="text-muted small mb-3">You must be logged in to post comments and join the reader discussions.</p>
+                  <Link to="/login" className="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
+                    Login to Comment
+                  </Link>
+                </div>
+              )}
 
               <div className="comments-list">
                 {comments.length > 0 ? (

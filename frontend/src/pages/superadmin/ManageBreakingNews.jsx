@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import API_BASE from '../../config/api';
 
-const ManageBreakingNews = () => {
+const ManageBreakingNews = ({ adminInfo: propAdminInfo }) => {
   const [headlines, setHeadlines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newText, setNewText] = useState('');
@@ -13,10 +13,29 @@ const ManageBreakingNews = () => {
   const [saving, setSaving] = useState(false);
   const [speed, setSpeed] = useState(35);
   const [updatingSpeed, setUpdatingSpeed] = useState(false);
+  const adminInfo = (() => {
+    if (propAdminInfo) return propAdminInfo;
+    try {
+      const mode = sessionStorage.getItem('portalMode');
+      const saved = mode === 'user'
+        ? localStorage.getItem('userInfo')
+        : (localStorage.getItem('adminInfo') || localStorage.getItem('userInfo'));
+      if (saved && saved !== 'undefined') {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.role === 'superadmin' || parsed.isManager)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return null;
+  })();
+  const config = adminInfo?.token ? { headers: { Authorization: `Bearer ${adminInfo.token}` } } : {};
 
   const fetchHeadlines = async () => {
     try {
-      const { data } = await axios.get(`${API_BASE}/api/settings/breaking-news/all`);
+      const { data } = await axios.get(`${API_BASE}/api/settings/breaking-news/all`, config);
       setHeadlines(data || []);
     } catch (err) {
       console.error('Failed to fetch breaking news', err);
@@ -47,7 +66,7 @@ const ManageBreakingNews = () => {
         text: newText.trim(),
         priority: newPriority,
         isActive: true
-      });
+      }, config);
       setNewText('');
       setNewPriority(0);
       await fetchHeadlines();
@@ -63,7 +82,7 @@ const ManageBreakingNews = () => {
     try {
       await axios.put(`${API_BASE}/api/settings/breaking-news/${item.id}`, {
         isActive: !item.isActive
-      });
+      }, config);
       await fetchHeadlines();
     } catch (err) {
       console.error('Failed to toggle status', err);
@@ -77,7 +96,7 @@ const ManageBreakingNews = () => {
       await axios.put(`${API_BASE}/api/settings/breaking-news/${id}`, {
         text: editText.trim(),
         priority: editPriority
-      });
+      }, config);
       setEditingId(null);
       setEditText('');
       setEditPriority(0);
@@ -93,7 +112,7 @@ const ManageBreakingNews = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this headline?')) return;
     try {
-      await axios.delete(`${API_BASE}/api/settings/breaking-news/${id}`);
+      await axios.delete(`${API_BASE}/api/settings/breaking-news/${id}`, config);
       await fetchHeadlines();
     } catch (err) {
       console.error('Failed to delete headline', err);
@@ -118,7 +137,7 @@ const ManageBreakingNews = () => {
     try {
       await axios.put(`${API_BASE}/api/settings/seo`, {
         breakingNewsSpeed: speed
-      });
+      }, config);
       alert('Speed updated successfully!');
     } catch (err) {
       console.error('Failed to update speed', err);

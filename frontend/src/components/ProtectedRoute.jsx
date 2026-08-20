@@ -1,18 +1,31 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import AdminLogin from '../pages/superadmin/AdminLogin';
+
+const getSafeLocalStorage = (key) => {
+  try {
+    const value = localStorage.getItem(key);
+    if (!value || value === 'undefined') {
+      return null;
+    }
+    return JSON.parse(value);
+  } catch (e) {
+    console.error(`Error parsing localStorage key "${key}":`, e);
+    localStorage.removeItem(key);
+    return null;
+  }
+};
 
 const ProtectedRoute = ({ children, isAdmin }) => {
   if (isAdmin) {
-    const adminInfo = JSON.parse(sessionStorage.getItem('adminInfo'));
+    const adminInfo = getSafeLocalStorage('adminInfo');
+
     if (!adminInfo || adminInfo.role !== 'superadmin') {
-       return <AdminLogin />;
+       return <Navigate to="/superadmin-login" replace />;
     }
     return children;
   }
 
-  const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-
+  const userInfo = getSafeLocalStorage('userInfo');
   if (!userInfo) {
     return <Navigate to="/login" />;
   }
@@ -21,3 +34,4 @@ const ProtectedRoute = ({ children, isAdmin }) => {
 };
 
 export default ProtectedRoute;
+
